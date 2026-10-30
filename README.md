@@ -61,6 +61,41 @@ LuckyTool 是一款运行在 [LSPosed](https://github.com/LSPosed/LSPosed) 框�
 
 文件名形如 `LuckyTool_v<版本名>(<编译号>)_<构建类型>.apk`，括号中的数字是编译序号，用于定位出问题的具体构建，反馈时可一并附上。
 
+## 手动编译 APK（GitHub Actions）
+
+仓库提供 `.github/workflows/build-apk.yml`，仅手动触发，不会在 Push 或 Pull Request 时自动编译。
+
+1. 将代码推送到自己的 GitHub 仓库，并确保工作流文件已合入默认分支。
+2. 打开仓库 **Actions → Build APK → Run workflow**，选择分支及 `release`（默认）或 `debug`。
+3. 编译成功后，在该次运行页面的 **Artifacts** 中下载 `LuckyTool-<构建类型>-<运行编号>`，解压得到 APK；产物保留 14 天。
+
+无需提供原作者的签名文件：未配置签名 Secrets 时，工作流会自动生成临时密钥和构建所需的 `keystore/keystore.properties`。**临时密钥每次运行都不同，生成的 APK 无法相互覆盖升级，也无法覆盖原作者签名的版本。** 卸载重装会清除应用数据；需要长期使用时，请配置自己的固定签名并妥善备份密钥。
+
+### 使用固定签名（可选，推荐）
+
+在仓库 **Settings → Secrets and variables → Actions → New repository secret** 中添加以下四项（必须全部配置，否则构建会报错）：
+
+| Secret | 内容 |
+|--------|------|
+| `SIGNING_KEYSTORE_BASE64` | 自己的 JKS / Keystore 文件的 Base64 编码 |
+| `SIGNING_STORE_PASSWORD` | 密钥库密码 |
+| `SIGNING_KEY_ALIAS` | 签名密钥别名 |
+| `SIGNING_KEY_PASSWORD` | 签名密钥密码 |
+
+没有密钥时，可以在安装了 JDK 的终端中执行以下命令，并按提示设置密码：
+
+```shell
+keytool -genkeypair -v -keystore luckytool.jks -storetype JKS -alias luckytool -keyalg RSA -keysize 2048 -validity 10000
+```
+
+在 PowerShell 中读取 Base64 编码，再将输出填入 `SIGNING_KEYSTORE_BASE64`：
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\luckytool.jks).Path))
+```
+
+签名文件和密码只用于本次构建，不会上传到 APK 产物中；请勿将它们提交到仓库。工作流沿用项目现有的 Gradle、依赖版本和 Android SDK 配置；若对应版本无法从远程仓库下载，仍需另行修正项目版本配置。
+
 ## 安装与激活
 
 1. 下载并安装模块 APK。

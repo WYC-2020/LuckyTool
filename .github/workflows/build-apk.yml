@@ -1,0 +1,92 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 构建类型
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - debug
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: 'false'
+
+      - name: Install project Android platform
+        run: |
+          compile_sdk=$(sed -n 's/^project.android.compileSdk=//p' gradle.properties | tr -d '\r')
+          test -n "$compile_sdk"
+          available_packages=$(sdkmanager --list | awk -F '|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}')
+          platform_package="platforms;android-${compile_sdk}"
+          if ! grep -Fx "$platform_package" <<< "$available_packages" > /dev/null; then
+            platform_package="platforms;android-${compile_sdk}.0"
+          fi
+          if ! grep -Fx "$platform_package" <<< "$available_packages" > /dev/null; then
+            echo "::error::No Android SDK platform found for compileSdk=${compile_sdk}."
+            exit 1
+          fi
+          echo "Installing Android SDK package: $platform_package"
+          sdkmanager "$platform_package"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare signing files
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: python3 .github/scripts/prepare-signing.py
+
+      - name: Build APK
+        env:
+          BUILD_TYPE: ${{ inputs.build_type }}
+        run: |
+          case "$BUILD_TYPE" in
+            release) task=assembleRelease ;;
+            debug) task=assembleDebug ;;
+            *) echo "Unsupported build type: $BUILD_TYPE" >&2; exit 1 ;;
+          esac
+          chmod +x gradlew
+          ./gradlew ":app:$task" --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyTool-${{ inputs.build_type }}-${{ github.run_number }}
+          path: app/build/outputs/apk/${{ inputs.build_type }}/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove signing files
+        if: always()
+        run: rm -f -- keystore/keystore.properties "$RUNNER_TEMP/luckytool-signing.jks"
