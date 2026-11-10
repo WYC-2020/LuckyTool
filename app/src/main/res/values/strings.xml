@@ -809,11 +809,15 @@
     <string name="display_module_calculates_battery_health_data_tips">Calculated Maximum Capacity</string>
     <string name="enable_stop_charging_at_80">Enable stop charging at 80%</string>
     <string name="show_phone_usage_screen_time">Show the last screen usage time</string>
+    <string name="remove_auto_enter_super_power_save">Remove forced automatic entry into super power saving mode</string>
+    <string name="remove_auto_enter_super_power_save_summary">Prevent automatically entering super power saving mode when the battery is below 2%</string>
     <string name="remove_battery_temperature_control">Remove battery temperature control</string>
     <string name="remove_battery_temperature_control_summary">Remove the limitation that various functions cannot be used,For example: camera, flashlight, hotspot, screen display engine, etc.</string>
     
     <string name="BatteryOptimization">Battery Optimization</string>
     <string name="remove_battery_restrict_plugin">Remove battery restrict plugin</string>
+    <string name="keep_google_services_network">Keep Google services on the network</string>
+    <string name="keep_google_services_network_summary">Stop the battery component from setting Play services, Play Store and ConfigUpdater to no networking after a failed Google connectivity check</string>
     <string name="restore_default_battery_optimization_whitelist">Restore default battery optimization whitelist</string>
     <string name="disable_customize_battery_optimization_whiteList">Disable custom battery optimization whitelist</string>
     <string name="disable_customize_battery_optimization_whiteList_summary">If the APP is manually granted the `ignore battery optimization` permission by the user, After enabling this function, the APP will not be automatically added to the battery optimization whitelist</string>
@@ -1075,7 +1079,7 @@
     <string name="remove_side_slider">Remove side slider</string>
     <string name="remove_side_slider_black_background">Remove the black background of the side slider</string>
     <string name="remove_rotate_screen_button">Remove the rotate screen button</string>
-    <string name="custom_rotate_screen_button_size">Rotate screen button size</string>
+    <string name="custom_rotate_screen_button_size">Custom rotate screen button size</string>
     <string name="remove_back_gesture_confirmation_limit">Remove the back gesture confirmation limit</string>
     
     <string name="CustomSideSliderIcon">Custom side slider icon</string>
@@ -1279,6 +1283,14 @@
     <string name="HidePageRelated">Hide page related</string>
     <string name="process_manager">Process management</string>
     <string name="very_dark_mode">Very dark mode</string>
+    <string name="extra_dim_enable">Enable very dark mode</string>
+    <string name="extra_dim_enable_summary">Dims the display below the system minimum brightness by applying a color filter</string>
+    <string name="extra_dim_level">Intensity</string>
+    <string name="extra_dim_level_follow_min">No level set yet — the system uses its weakest level until you drag the slider</string>
+    <string name="extra_dim_persist">Keep after reboot</string>
+    <string name="extra_dim_persist_summary">When off, very dark mode turns itself off again after a reboot</string>
+    <string name="extra_dim_unsupported">This device does not accelerate the display color transform, so very dark mode cannot be enabled — doing so would black out the screen.</string>
+    <string name="extra_dim_open_system_page">Open the system page</string>
     <string name="battery_health_page">Battery Health Page</string>
     <string name="battery_optimization">Battery Optimization</string>
     <string name="camera_algo_page">Camera Algorithms Page</string>
@@ -1479,6 +1491,8 @@
     <string name="apk_details_size">Package size</string>
     <string name="apk_details_min_sdk">Minimum SDK</string>
     <string name="apk_details_target_sdk">Target SDK</string>
+    <string name="apk_details_min_os_version">Minimum OS version</string>
+    <string name="apk_details_max_os_version">Maximum OS version</string>
     <string name="apk_details_unknown">Unavailable</string>
     <string name="select_color">Select Color</string>
     <string name="current_color">Current Color: %1$s</string>
@@ -1621,4 +1635,18 @@
     <string name="settings_enable_glass_summary">Enable liquid glass effect for floating bottom bar.</string>
     <string name="allow_third_party_installer">Allow third-party installers</string>
     <string name="allow_third_party_installer_summary">Use your chosen default app to open APK files and remember the installer selection</string>
+    <!--流体云卡片重定向（OplusMetisPage）-->
+    <string name="metis_category_redirect">Fluid cloud redirect</string>
+    <string name="metis_redirect_enabled">Enable card redirect</string>
+    <string name="metis_redirect_enabled_summary">Tapping a fluid cloud card opens the target browser picked below instead of the destination the card carries</string>
+    <string name="metis_target_browser">Target browser</string>
+    <string name="metis_target_browser_summary">Current: %s</string>
+    <string name="metis_rule_protocol">heytapbrowser:// cards</string>
+    <string name="metis_rule_protocol_summary">Redirect cards whose link uses the heytapbrowser:// protocol</string>
+    <string name="metis_rule_text_search">Text search cards</string>
+    <string name="metis_rule_text_search_summary">Redirect text search cards (textType 29)</string>
+    <string name="metis_rule_heytap_http">Browser http(s) cards</string>
+    <string name="metis_rule_heytap_http_summary">Redirect cards that point to com.heytap.browser with a valid http(s) link</string>
+    <string name="metis_rule_browser_card">Other browser http(s) cards (experimental)</string>
+    <string name="metis_rule_browser_card_summary">Redirect cards that point to another browser with a valid http(s) link. Experimental: cards that need their own app to handle the link may break</string>
 </resources>

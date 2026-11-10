@@ -590,6 +590,8 @@
     <string name="display_module_calculates_battery_health_data_tips">Capacità Massima Calcolata</string>
     <string name="enable_stop_charging_at_80">Abilita l\'interruzione della ricarica all\'80%</string>
     <string name="show_phone_usage_screen_time">Mostra l\'ultimo tempo di utilizzo dello schermo</string>
+    <string name="remove_auto_enter_super_power_save">Rimuovi l\'ingresso forzato in modalità super risparmio</string>
+    <string name="remove_auto_enter_super_power_save_summary">Impedisci l\'ingresso automatico in modalità super risparmio con batteria inferiore al 2%</string>
     <string name="remove_battery_temperature_control">Rimuovi controllo temperatura</string>
     <string name="remove_battery_temperature_control_summary">Rimuovi la limitazione che varie funzioni non possono essere utilizzate, Per esempio: fotocamera, torcia, hotspot, motore di visualizzazione dello schermo, ecc.</string>
     <string name="BatteryOptimization">Ottimizzazione batteria</string>
@@ -806,7 +808,7 @@
     <string name="remove_side_slider">Rimuovi cursore laterale</string>
     <string name="remove_side_slider_black_background">Rimuovi lo sfondo nero del cursore laterale</string>
     <string name="remove_rotate_screen_button">Rimuovi il pulsante rotazione dello schermo</string>
-    <string name="custom_rotate_screen_button_size">Dimensione del pulsante di rotazione dello schermo</string>
+    <string name="custom_rotate_screen_button_size">Dimensione personalizzata del pulsante di rotazione dello schermo</string>
     <string name="remove_back_gesture_confirmation_limit">Remove the back gesture confirmation limit</string>
     <string name="CustomSideSliderIcon">Icona cursore laterale personalizzata</string>
     <string name="replace_side_slider_icon_switch">Sostituisci l\'icona del dispositivo di scorrimento laterale</string>

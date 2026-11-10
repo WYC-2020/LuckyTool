@@ -5,9 +5,10 @@ import com.luckyzyx.luckytool.ui.compose.scopes.ScopePageSpec
 import com.luckyzyx.luckytool.utils.A13
 import com.luckyzyx.luckytool.utils.ModulePrefs
 import com.luckyzyx.luckytool.utils.SDK
+import com.luckyzyx.luckytool.utils.sendPrefsValue
 
 /**
- * 电池页（旧 ui.fragment.scopes.apps.OplusBattery 的 Compose 等价物）。
+ * 电池页：电池健康度、充电与耗电优化相关的开关与取值。
  */
 object OplusBatteryPage {
 
@@ -53,6 +54,16 @@ object OplusBatteryPage {
             )
         }
         switch(
+            key = "remove_auto_enter_super_power_save",
+            title = c.getString(R.string.remove_auto_enter_super_power_save),
+            summary = c.getString(R.string.remove_auto_enter_super_power_save_summary),
+            onChange = {
+                c.sendPrefsValue(
+                    "com.android.systemui", "remove_auto_enter_super_power_save", it
+                )
+            },
+        )
+        switch(
             key = "remove_battery_temperature_control",
             title = c.getString(R.string.remove_battery_temperature_control),
             summary = c.getString(R.string.remove_battery_temperature_control_summary),
@@ -61,6 +72,11 @@ object OplusBatteryPage {
         switch(
             key = "remove_battery_restrict_plugin",
             title = c.getString(R.string.remove_battery_restrict_plugin),
+        )
+        switch(
+            key = "keep_google_services_network",
+            title = c.getString(R.string.keep_google_services_network),
+            summary = c.getString(R.string.keep_google_services_network_summary),
         )
         switch(
             key = "restore_default_battery_optimization_whitelist",

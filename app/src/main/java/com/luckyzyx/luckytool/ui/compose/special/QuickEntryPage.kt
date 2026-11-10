@@ -10,8 +10,8 @@ import com.luckyzyx.luckytool.utils.checkResolveActivity
 import com.topjohnwu.superuser.ShellUtils
 
 /**
- * QuickEntry 页（旧 ui.fragment.others.QuickEntryFragment 的 Compose 等价物）。
- * 纯点击入口页：两个分类 + 若干条件可见（checkResolveActivity）的跳转项。
+ * QuickEntry 页：两个分类下的纯点击跳转入口。
+ * 每项先用 checkResolveActivity 判断目标 Activity 是否存在，不存在就不显示。
  */
 object QuickEntryPage {
 
@@ -51,13 +51,11 @@ object QuickEntryPage {
 
         category(c.getString(R.string.HidePageRelated))
         entry(c.getString(R.string.process_manager)) { IntentUtils(c).jumpRunningApp() }
-        entry(
-            c.getString(R.string.very_dark_mode),
-            visible = c.checkResolveActivity(
-                "com.android.settings",
-                "com.android.settings.Settings\$ReduceBrightColorsSettingsActivity",
-            ),
-        ) { IntentUtils(c).jumpVeryDarkMode() }
+        // 进 LT 自己的极暗模式页：系统极暗页在部分 ROM 上被过滤成空白页，不能用它做入口。
+        // 恒显示 —— LT 的页面在 C16 / C17 都能用。
+        entry(c.getString(R.string.very_dark_mode)) {
+            navigate?.invoke("extra_dim", c.getString(R.string.very_dark_mode))
+        }
         entry(
             c.getString(R.string.open_battery_health),
             visible = c.checkResolveActivity(

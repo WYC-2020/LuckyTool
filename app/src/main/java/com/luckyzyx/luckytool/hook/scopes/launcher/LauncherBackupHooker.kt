@@ -2,9 +2,12 @@ package com.luckyzyx.luckytool.hook.scopes.launcher
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
@@ -19,11 +22,15 @@ import androidx.core.net.toUri
 import com.highcapable.betterandroid.ui.extension.view.toast
 import com.highcapable.kavaref.KavaRef.Companion.asResolver
 import com.highcapable.kavaref.KavaRef.Companion.resolve
+import com.highcapable.kavaref.extension.classOf
+import com.highcapable.kavaref.extension.isStatic
+import com.highcapable.kavaref.extension.isSubclassOf
 import com.highcapable.kavaref.resolver.MethodResolver
 import com.highcapable.yukihookapi.extension.kavaref.hook
 import com.highcapable.yukihookapi.extension.kavaref.toClass
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.log.YLog
+import com.luckyzyx.luckytool.hook.scopes.launcher.LauncherBackupHooker.installProcessStartMountPoint
 import com.luckyzyx.luckytool.utils.HiddenApp
 import com.luckyzyx.luckytool.utils.LauncherBackupGate
 import com.luckyzyx.luckytool.utils.LauncherBackupPrefs
@@ -38,7 +45,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.lsposed.lsparanoid.Obfuscate
 import java.io.File
-import java.lang.reflect.Modifier
 import java.util.concurrent.Executors
 
 /**
@@ -79,6 +85,18 @@ object LauncherBackupHooker : YukiBaseHooker() {
      * LifecycleOwner，取到的永远是 null，于是排期一次也不会发生 —— 真机上只剩挂载点触发的那一次自查。
      */
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
+    /**
+     * 亮屏/解锁补一次自查：桌面在熄屏时段可能被系统冻结（缓存进程冻结 / Doze），
+     * 那时主线程排的延迟消息不会跑，到点也没有任何日志；亮屏和锁定解除的系统广播会把进程唤醒
+     * 并投递到这里，所以补一次自查，用户一碰手机就能把漏掉的那次补上。
+     */
+    private val wakeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            LogUtils.d(TAG, "wakeReceiver", "唤醒自查: " + intent?.action)
+            enqueueAutoBackupSelfCheck()
+        }
+    }
 
     /** 上次处理过的指令 token（进程重启时从 prefs 读回，避免重放旧指令） */
     @Volatile
@@ -150,7 +168,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
     /** 拿不到 Application 时短间隔重试；超过上限就停手，交给挂载点或下次进程启动 */
     private fun scheduleInitRetry() {
         if (initRetryCount >= INIT_RETRY_TIMES) {
-            LogUtils.d(TAG, "scheduleInitRetry", "等不到 Application，暂不初始化（等 LauncherApplication#onCreate）")
+            LogUtils.d(
+                TAG,
+                "scheduleInitRetry",
+                "等不到 Application，暂不初始化（等 LauncherApplication#onCreate）"
+            )
             return
         }
         initRetryCount++
@@ -178,7 +200,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
         lastToken = LauncherBackupUtils.parseCommand(
             preferences(ModulePrefs).getString(LauncherBackupUtils.KEY_COMMAND, "")
         )?.token
-        LogUtils.d(TAG, "initHost", "初始化: pkg=" + appInfo.packageName + " dataRoot=" + root.absolutePath)
+        LogUtils.d(
+            TAG,
+            "initHost",
+            "初始化: pkg=" + appInfo.packageName + " dataRoot=" + root.absolutePath
+        )
         dataChannel.wait<String>(LauncherBackupUtils.KEY_COMMAND) { raw ->
             handleCommand(raw)
         }
@@ -238,7 +264,7 @@ object LauncherBackupHooker : YukiBaseHooker() {
 
     private fun toast(text: String) {
         val context = hostContext ?: return
-        LogUtils.d(TAG, "toast", "$text")
+        LogUtils.d(TAG, "toast", text)
         runCatching {
             Handler(Looper.getMainLooper()).post {
                 runCatching { context.toast(text) }
@@ -281,7 +307,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
                         }
                     }
                 }
-                LogUtils.d(TAG, "installProcessStartMountPoint", "挂载点命中: LauncherApplication#onCreate")
+                LogUtils.d(
+                    TAG,
+                    "installProcessStartMountPoint",
+                    "挂载点命中: LauncherApplication#onCreate"
+                )
             }.onFailure { throwable ->
                 YLog.debug("$TAG 挂载 LauncherApplication#onCreate 失败", throwable)
             }
@@ -328,6 +358,19 @@ object LauncherBackupHooker : YukiBaseHooker() {
         modelLoadTries = 0
         mainHandler.removeCallbacks(modelLoadedPoll)
         mainHandler.postDelayed(modelLoadedPoll, MODEL_LOAD_POLL_MS)
+        registerWakeReceiver()
+    }
+
+    /** 亮屏/解锁是系统广播，不受 Android 14 的导出 flag 约束，用两参重载登记即可 */
+    private fun registerWakeReceiver() {
+        val context = hostContext ?: return
+        runCatching {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            context.registerReceiver(wakeReceiver, filter)
+        }.onFailure { YLog.debug("$TAG 注册唤醒自查失败", it) }
     }
 
     /** 先等布局加载完成再自查：加载期间桌面正在读库建模型，别跟它抢 IO */
@@ -339,7 +382,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
                 mainHandler.postDelayed(this, MODEL_LOAD_POLL_MS)
                 return
             }
-            if (!loaded) LogUtils.d(TAG, "installAutoBackupSelfCheck", "等待布局加载超时，仍做一次到期自查")
+            if (!loaded) LogUtils.d(
+                TAG,
+                "installAutoBackupSelfCheck",
+                "等待布局加载超时，仍做一次到期自查"
+            )
             enqueueAutoBackupSelfCheck()
             armSelfCheckTick()
         }
@@ -466,9 +513,10 @@ object LauncherBackupHooker : YukiBaseHooker() {
     /** 布局是否加载完成：ROM 里 LauncherModel.mModelLoaded 由 LoaderTransaction.commit() 置位 */
     private fun isModelLoaded(): Boolean = runCatching {
         val context = hostContext ?: return false
-        val model = launcherAppState(context)?.asResolver()?.optional(true)
-            ?.firstMethodOrNull { name = "getModel"; superclass() }?.invoke() ?: return false
-        model.asResolver().optional(true).firstMethodOrNull { name = "isModelLoaded"; superclass() }
+        val model = launcherAppState(context)?.asResolver()?.firstMethodOrNull {
+            name = "getModel"; superclass()
+        }?.invoke() ?: return false
+        model.asResolver().firstMethodOrNull { name = "isModelLoaded"; superclass() }
             ?.invoke() as? Boolean ?: false
     }.getOrElse {
         LogUtils.d(TAG, "isModelLoaded", "读取布局加载状态失败: " + it.message)
@@ -480,7 +528,7 @@ object LauncherBackupHooker : YukiBaseHooker() {
      * getInstance / getModel 在部分 ROM 上声明在父类里，所以带上 superclass()。
      */
     private fun launcherAppState(context: Context): Any? = runCatching {
-        LAUNCHER_APP_STATE.toClass(launcherClassLoader()).resolve().optional(true)
+        LAUNCHER_APP_STATE.toClass(launcherClassLoader()).resolve()
             .firstMethodOrNull { name = "getInstance"; parameters(Context::class); superclass() }
             ?.invoke(context)
     }.getOrNull()
@@ -548,7 +596,7 @@ object LauncherBackupHooker : YukiBaseHooker() {
                 val reason = throwable.message ?: throwable.javaClass.simpleName
                 return Outcome(
                     false,
-                    displayName + ": " + reason,
+                    "$displayName: $reason",
                     LauncherBackupGate.mentionsProviderUnavailable(reason),
                 )
             }
@@ -674,7 +722,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
             return
         }
         if (skippedForeign > 0) {
-            LogUtils.d(TAG, "evictSnapshots", "跳过 $skippedForeign 份非本进程投稿的旧快照（owner 不是 $hostPackage，删不掉）")
+            LogUtils.d(
+                TAG,
+                "evictSnapshots",
+                "跳过 $skippedForeign 份非本进程投稿的旧快照（owner 不是 $hostPackage，删不掉）"
+            )
         }
         val idByName = rows.associate { it.name to it.id }
         val excluded =
@@ -685,7 +737,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
                 val removed = runCatching {
                     resolver.delete(ContentUris.withAppendedId(collection, id), null, null)
                 }.getOrDefault(0) > 0
-                if (!removed) LogUtils.d(TAG, "evictSnapshots", "删除旧投稿失败: " + candidate.fileName)
+                if (!removed) LogUtils.d(
+                    TAG,
+                    "evictSnapshots",
+                    "删除旧投稿失败: " + candidate.fileName
+                )
             }
     }
 
@@ -705,7 +761,8 @@ object LauncherBackupHooker : YukiBaseHooker() {
         if (dir == null) return
         val candidates = runCatching {
             dir.listFiles().orEmpty().mapNotNull { file ->
-                val parsed = LauncherBackupUtils.parseSnapshotName(file.name) ?: return@mapNotNull null
+                val parsed =
+                    LauncherBackupUtils.parseSnapshotName(file.name) ?: return@mapNotNull null
                 FileSnapshot(parsed.name, parsed.tag, parsed.timeMillis, file)
             }
         }.getOrElse { throwable ->
@@ -839,7 +896,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
             superclass()
         }
         if (manager == null || method == null) {
-            LogUtils.d(TAG, "syncHiddenApps", "取不到 DeepProtectedAppsManager.I，隐藏应用状态未同步")
+            LogUtils.d(
+                TAG,
+                "syncHiddenApps",
+                "取不到 DeepProtectedAppsManager.I，隐藏应用状态未同步"
+            )
             return "hidden=skip(no entry)"
         }
 
@@ -864,7 +925,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
         if (remaining.toHide.isNotEmpty() || remaining.toUnhide.isNotEmpty()) {
             val fallback =
                 remaining.toHide.map { it to true } + remaining.toUnhide.map { it to false }
-            LogUtils.d(TAG, "syncHiddenApps", "I() 未生效 " + fallback.size + " 条，回退存储层 HiddenDataCollection")
+            LogUtils.d(
+                TAG,
+                "syncHiddenApps",
+                "I() 未生效 " + fallback.size + " 条，回退存储层 HiddenDataCollection"
+            )
             fallback.forEach { (app, hidden) ->
                 if (!applyStorageFallback(manager, app, hidden)) failed++
             }
@@ -881,13 +946,13 @@ object LauncherBackupHooker : YukiBaseHooker() {
     private fun protectedAppsManager(context: Context): Any? = runCatching {
         val managerClass = DEEP_PROTECTED_MANAGER.toClass(launcherClassLoader())
         val accessor = managerClass.declaredMethods.firstOrNull { method ->
-            Modifier.isStatic(method.modifiers) &&
-                method.parameterTypes.contentEquals(arrayOf(Context::class.java)) &&
-                managerClass.isAssignableFrom(method.returnType)
+            method.isStatic &&
+                method.parameterTypes.contentEquals(arrayOf(classOf<Context>())) &&
+                method.returnType isSubclassOf managerClass
         }
         if (accessor != null) return@runCatching accessor.invoke(null, context)
         managerClass.declaredFields.firstOrNull { field ->
-            Modifier.isStatic(field.modifiers) && managerClass.isAssignableFrom(field.type)
+            field.isStatic && field.type isSubclassOf managerClass
         }?.get(null)
     }.getOrNull()
 
@@ -911,9 +976,9 @@ object LauncherBackupHooker : YukiBaseHooker() {
 
     /** 从 DPAM 实例的字段里取出持有隐藏状态缓存 + prefs 的 HiddenDataCollection 及其变更方法 */
     private fun hiddenDataHolders(manager: Any): List<MethodResolver<*>> = runCatching {
-        manager.asResolver().optional(true).field { }.flatMap { field ->
+        manager.asResolver().field { }.flatMap { field ->
             val holder = field.get() ?: return@flatMap emptyList()
-            holder.asResolver().optional(true).method {
+            holder.asResolver().method {
                 parameterCount = 2
                 parameters(String::class, UserHandle::class)
                 returnType = Void.TYPE
@@ -923,8 +988,8 @@ object LauncherBackupHooker : YukiBaseHooker() {
 
     /** 用户句柄：UserHandle.of(int) 在部分 SDK 上不可直接引用，反射取；拿不到退回当前用户（真机 profile 基本都是 0） */
     private fun userHandle(userId: Int): UserHandle = runCatching {
-        UserHandle::class.resolve().optional(true)
-            .firstMethodOrNull { name = "of"; parameters(java.lang.Integer.TYPE) }
+        UserHandle::class.resolve()
+            .firstMethodOrNull { name = "of"; parameters(Integer.TYPE) }
             ?.invoke(userId) as? UserHandle
     }.getOrNull() ?: Process.myUserHandle()
 
@@ -955,11 +1020,9 @@ object LauncherBackupHooker : YukiBaseHooker() {
         val context = hostContext ?: return "no context"
         return runCatching {
             val appState = launcherAppState(context) ?: error("no LauncherAppState")
-            val model = appState.asResolver().optional(true)
-                .firstMethodOrNull { name = "getModel"; superclass() }?.invoke()
-                ?: error("no LauncherModel")
-            model.asResolver().optional(true)
-                .firstMethodOrNull { name = "forceReload"; superclass() }?.invoke()
+            val model = appState.asResolver().firstMethodOrNull { name = "getModel"; superclass() }
+                ?.invoke() ?: error("no LauncherModel")
+            model.asResolver().firstMethodOrNull { name = "forceReload"; superclass() }?.invoke()
             null
         }.getOrElse { throwable ->
             YLog.debug("$TAG forceReload 失败", throwable)
@@ -969,9 +1032,9 @@ object LauncherBackupHooker : YukiBaseHooker() {
 
     /** 当前桌面模式（Standard 0 / Drawer 2 / Simple 3）；取不到返回 null */
     private fun currentLauncherMode(): Int? = runCatching {
-        LAUNCHER_MODE_MANAGER.toClass(launcherClassLoader()).resolve().optional(true)
+        LAUNCHER_MODE_MANAGER.toClass(launcherClassLoader()).resolve()
             .firstMethodOrNull { name = "getInstance"; emptyParameters() }?.invoke()?.asResolver()
-            ?.optional(true)?.firstMethodOrNull { name = "getCurType"; superclass() }
+            ?.firstMethodOrNull { name = "getCurType"; superclass() }
             ?.invoke() as? Int
     }.getOrElse {
         YLog.debug("$TAG 读取 launcher_mode 失败", it)

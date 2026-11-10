@@ -591,6 +591,8 @@
     <string name="display_module_calculates_battery_health_data_tips">Calculated Maximum Capacity</string>
     <string name="enable_stop_charging_at_80">Enable stop charging at 80%</string>
     <string name="show_phone_usage_screen_time">Show the last screen usage time</string>
+    <string name="remove_auto_enter_super_power_save">Вимкнути примусовий вхід у режим суперзаощадження</string>
+    <string name="remove_auto_enter_super_power_save_summary">Заборонити автоматичний вхід у режим суперзаощадження при заряді нижче 2%</string>
     <string name="remove_battery_temperature_control">Remove battery temperature control</string>
     <string name="remove_battery_temperature_control_summary">Remove the limitation that various functions cannot be used,For example: camera, flashlight, hotspot, screen display engine, etc.</string>
     <string name="BatteryOptimization">Оптимізація батареї</string>
@@ -807,7 +809,7 @@
     <string name="remove_side_slider">Видалити бічну панель</string>
     <string name="remove_side_slider_black_background">Прибрати чорний фон бічної панелі</string>
     <string name="remove_rotate_screen_button">Видалити кнопку повороту екрану</string>
-    <string name="custom_rotate_screen_button_size">Розмір кнопки повороту екрану</string>
+    <string name="custom_rotate_screen_button_size">Власний розмір кнопки повороту екрану</string>
     <string name="remove_back_gesture_confirmation_limit">Remove the back gesture confirmation limit</string>
     <string name="CustomSideSliderIcon">Користувацька іконка бічної панелі</string>
     <string name="replace_side_slider_icon_switch">Замінити іконку бічної панелі</string>

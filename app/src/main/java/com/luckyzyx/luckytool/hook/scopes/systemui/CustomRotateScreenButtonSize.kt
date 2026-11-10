@@ -4,11 +4,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import com.highcapable.kavaref.extension.classOf
+import com.highcapable.kavaref.extension.isSubclassOf
+import com.highcapable.kavaref.extension.loadClassOrNull
+import com.highcapable.kavaref.extension.makeAccessible
 import com.highcapable.yukihookapi.hook.entity.YukiBaseHooker
 import com.highcapable.yukihookapi.hook.log.YLog
 import com.luckyzyx.luckytool.utils.DexkitUtils.checkDataList
 import com.luckyzyx.luckytool.utils.ModulePrefs
-import com.luckyzyx.luckytool.utils.safeOfNull
 import org.lsposed.lsparanoid.Obfuscate
 import org.luckypray.dexkit.DexKitBridge
 import java.util.WeakHashMap
@@ -23,6 +25,7 @@ class CustomRotateScreenButtonSize(val dexKitBridge: DexKitBridge) : YukiBaseHoo
         val percent = preferences(ModulePrefs).getInt("custom_rotate_screen_button_size", 100)
             .coerceIn(50, 100)
         if (percent == 100) return
+        val loader = hostClassLoader ?: return
 
         //Source FloatingRotationButton C13+
         //通过窗口标题和公开 API 定位, 不依赖混淆后的类名、方法名和字段名。
@@ -61,19 +64,16 @@ class CustomRotateScreenButtonSize(val dexKitBridge: DexKitBridge) : YukiBaseHoo
         }.checkDataList("CustomRotateScreenButtonSize dimensionMethod").singleOrNull() ?: return
 
         //同时被尺寸初始化与窗口布局流程读取的 View 字段才是按钮, 外层 ViewGroup 不在此列。
-        val (buttonData, buttonClass) = controllerClass.findField {
+        val buttonData = controllerClass.findField {
             matcher {
                 addReadMethod { descriptor(layoutData.descriptor) }
                 addReadMethod { descriptor(dimensionData.descriptor) }
             }
         }.checkDataList("CustomRotateScreenButtonSize buttonFields", onlyOne = false)
-            .mapNotNull { field ->
-                val type = dexKitBridge.getClassData(field.typeName) ?: return@mapNotNull null
-                val isView = safeOfNull {
-                    View::class.java.isAssignableFrom(type.getInstance(hostClassLoader!!))
-                } ?: false
-                if (isView) field to type else null
-            }.singleOrNull() ?: return
+            .singleOrNull { field ->
+                loader.loadClassOrNull(field.typeName)?.isSubclassOf(classOf<View>()) == true
+            } ?: return
+        val buttonClass = dexKitBridge.getClassData(buttonData.typeName) ?: return
 
         //直径设置方法由尺寸初始化方法调用, 并由它唯一定位测量直径字段。
         val setterData = buttonClass.findMethod {
@@ -90,12 +90,11 @@ class CustomRotateScreenButtonSize(val dexKitBridge: DexKitBridge) : YukiBaseHoo
             }
         }.checkDataList("CustomRotateScreenButtonSize diameterField").singleOrNull() ?: return
 
-        val loader = hostClassLoader ?: return
         val layoutMethod = layoutData.getMethodInstance(loader)
         val dimensionMethod = dimensionData.getMethodInstance(loader)
         val diameterSetter = setterData.getMethodInstance(loader)
-        val buttonField = buttonData.getFieldInstance(loader).accessible()
-        val diameterField = diameterData.getFieldInstance(loader).accessible()
+        val buttonField = buttonData.getFieldInstance(loader).apply { makeAccessible() }
+        val diameterField = diameterData.getFieldInstance(loader).apply { makeAccessible() }
 
         dimensionMethod.hook {
             after {
@@ -134,9 +133,6 @@ class CustomRotateScreenButtonSize(val dexKitBridge: DexKitBridge) : YukiBaseHoo
         }
         YLog.debug("CustomRotateScreenButtonSize hook success: $percent%", tag = "LuckyTool")
     }
-
-    private fun <T : java.lang.reflect.AccessibleObject> T.accessible(): T =
-        apply { isAccessible = true }
 
     internal companion object {
         fun scaledDiameter(originalDiameter: Int, percent: Int): Int =

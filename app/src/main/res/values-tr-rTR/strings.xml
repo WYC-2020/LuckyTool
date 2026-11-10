@@ -690,6 +690,8 @@
     <string name="display_module_calculates_battery_health_data_tips">Hesaplanan Maksimum Kapasite</string>
     <string name="enable_stop_charging_at_80">%%80\'de şarjı durdurmayı etkinleştir</string>
     <string name="show_phone_usage_screen_time">Telefonda son kullanıldığı zamanı göster</string>
+    <string name="remove_auto_enter_super_power_save">Süper güç tasarrufuna zorunlu otomatik geçişi kaldır</string>
+    <string name="remove_auto_enter_super_power_save_summary">Pil %2\'nin altındayken süper güç tasarrufuna otomatik geçişi engelle</string>
     <string name="remove_battery_temperature_control">Pil sıcaklık kontrolü sınırını kaldır</string>
     <string name="remove_battery_temperature_control_summary">Kamera, el feneri, erişim noktası (hotspot), ekran okuma motoru vb. çeşitli işlevlerin kullanılamamasına neden olan kısıtlamaları kaldırır.</string>
     
@@ -951,7 +953,7 @@
     <string name="remove_side_slider">Geri kaydırma (side slide) animasyon okunu kaldır</string>
     <string name="remove_side_slider_black_background">Yan Geri kaydırma kaydırıcısının siyah arka planını (side slide blur effecti) kaldır</string>
     <string name="remove_rotate_screen_button">Ekranı döndürme düğmesini kaldır</string>
-    <string name="custom_rotate_screen_button_size">Ekranı döndürme düğmesinin boyutu</string>
+    <string name="custom_rotate_screen_button_size">Özel ekran döndürme düğmesi boyutu</string>
     <string name="remove_back_gesture_confirmation_limit">Tam ekran el hareketlerinde geri dönme/çıkma onayı sınırını kaldır</string>
     
     <string name="CustomSideSliderIcon">Özel geri kaydırma oku/simgesi</string>

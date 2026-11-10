@@ -73,7 +73,7 @@ object LauncherBackupSink {
             val placement = runCatching { attempt() }.getOrElse { throwable ->
                 val reason = throwable.message ?: throwable.javaClass.simpleName
                 failures[where] = throwable.javaClass.simpleName + ": " + reason
-                LogUtils.d(TAG, "write", "写法 " + where + " 失败: " + reason)
+                LogUtils.d(TAG, "write", "写法 $where 失败: $reason")
                 YLog.debug("$TAG 写法 $where 落盘失败", throwable)
                 null
             } ?: continue
@@ -89,6 +89,7 @@ object LauncherBackupSink {
     }
 
     /** 拟尝试的写法：名字用于日志，lambda 成功时返回落盘位置、失败时抛异常 */
+    @Suppress("DEPRECATION")
     private fun strategies(
         context: Context,
         displayName: String,
@@ -110,7 +111,7 @@ object LauncherBackupSink {
                 mediaStorePlacement(resolver, primaryFiles, displayName, bytes)
             })
             add("file:external_media" to {
-                filePlacement(context.getExternalMediaDirs()?.firstOrNull(), displayName, bytes)
+                filePlacement(context.externalMediaDirs?.firstOrNull(), displayName, bytes)
             })
             add("file:external_files" to {
                 filePlacement(context.getExternalFilesDir(null), displayName, bytes)
