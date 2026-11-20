@@ -26,12 +26,12 @@ import com.luckyzyx.luckytool.service.TilesService
 import com.luckyzyx.luckytool.service.UserService
 import com.luckyzyx.luckytool.ui.compose.ActivationLoadingLayer
 import com.luckyzyx.luckytool.ui.compose.FunctionRequest
-import com.luckyzyx.luckytool.ui.compose.LuckySplashHost
+import com.luckyzyx.luckytool.ui.compose.SplashHost
 import com.luckyzyx.luckytool.ui.compose.MainShell
 import com.luckyzyx.luckytool.ui.compose.components.GateDialogSpec
 import com.luckyzyx.luckytool.ui.service.XposedServiceBridge
 import com.luckyzyx.luckytool.ui.service.awaitActivation
-import com.luckyzyx.luckytool.ui.theme.LuckyAppTheme
+import com.luckyzyx.luckytool.ui.theme.AppTheme
 import com.luckyzyx.luckytool.utils.A12
 import com.luckyzyx.luckytool.utils.BiometricUtils
 import com.luckyzyx.luckytool.utils.DeviceUtils
@@ -69,7 +69,10 @@ open class MainActivity : AppCompatActivity() {
     /** 跨标签页打开作用域页，由 MainShell 入栈并保留来源标签。 */
     val functionNavRequests = MutableStateFlow<FunctionRequest?>(null)
 
-    /** 启动阻塞门对话框（Xposed 未激活 / 无 root / 系统不支持）：非空即由 MainShell 渲染，见 GateDialog */
+    /**
+     * 启动阻塞门对话框（Xposed 未激活 / 无 root / 系统不支持）：非空即由主界面渲染，见 GateDialog。
+     * 只属于主界面 —— 权限页已经把 Root / 模块状态写在页面上，权限门在场时不组合它，状态留到主界面再弹。
+     */
     var gateDialog by mutableStateOf<GateDialogSpec?>(null)
 
     /** 权限阻塞门是否生效（模块自身 4 项权限未全授予）：只由 [refreshPermissionGate] 的纯查询驱动 */
@@ -112,11 +115,11 @@ open class MainActivity : AppCompatActivity() {
         setContent {
             // 闪屏与加载层是中性配色、不读主题；主界面的页面数据来自 ModulePrefs（remote 优先），
             // 绑定没落定时读到的还是默认值，所以激活检测出结果后再组合主界面
-            LuckySplashHost {
+            SplashHost {
                 if (isActivationPending) {
                     ActivationLoadingLayer()
                 } else {
-                    LuckyAppTheme {
+                    AppTheme {
                         MainShell(this)
                     }
                 }
@@ -148,7 +151,10 @@ open class MainActivity : AppCompatActivity() {
             // 超时仍未激活：弹未激活门（无 root / 系统不支持的门可能已经先弹，不抢它）
             if (gateDialog == null) {
                 activationGateShown = true
-                gateDialog = GateDialogSpec(message = getString(R.string.unsupported_xposed))
+                gateDialog = GateDialogSpec(
+                    title = getString(R.string.module_notactive),
+                    message = getString(R.string.unsupported_xposed),
+                )
             }
             // 激活迟到（框架服务起得慢）时撤掉未激活门：主界面已按本地 prefs 组合过了，
             // 重建一次让主题和页面数据重新走 remote prefs，免得显示的默认值与写入目标不一致

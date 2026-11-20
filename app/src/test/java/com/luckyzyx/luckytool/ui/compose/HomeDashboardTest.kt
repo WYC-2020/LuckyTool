@@ -25,7 +25,7 @@ import com.luckyzyx.luckytool.ui.shell.LocalFloatingBottomBarStyle
 import com.luckyzyx.luckytool.ui.theme.AppSettings
 import com.luckyzyx.luckytool.ui.theme.ColorMode
 import com.luckyzyx.luckytool.ui.theme.LocalUiMode
-import com.luckyzyx.luckytool.ui.theme.LuckyTheme
+import com.luckyzyx.luckytool.ui.theme.AppTheme
 import com.luckyzyx.luckytool.ui.theme.UiMode
 import com.luckyzyx.luckytool.utils.DeviceInfoEntry
 import org.junit.Assert.assertEquals
@@ -40,9 +40,31 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [32], application = Application::class, qualifiers = "zh-rCN-w411dp-h880dp-xhdpi")
+@Config(sdk = [35], application = Application::class, qualifiers = "zh-rCN-w411dp-h880dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HomeDashboardTest {
+
+    companion object {
+        private const val model = "realme RMX5200 真我 GT8 Pro"
+        private const val rootLine = "Root来源: 3.3.1 (32680)"
+        private const val frameworkLine = "框架版本: LSPosed v2.2.1 (7912)"
+        private val sample = HomeDashboardState(
+            moduleActive = true, moduleVersion = "1.3.5_beta (22848)",
+            rootVersion = "Root 来源：3.3.1 (32680)", frameworkVersion = "框架版本：LSPosed v2.2.1 (7912)",
+            showNotice = true,
+            deviceInfo = listOf(
+                DeviceInfoEntry(R.string.model, model),
+                DeviceInfoEntry(R.string.system, "Android 17 (37) · OS V17.0.0 (40)"),
+                DeviceInfoEntry(R.string.version, "RMX5200_11.C.27_1270_202610051850"),
+                DeviceInfoEntry(R.string.product, "RMX5200 RE6030L1 SM8850 24624 B"),
+                DeviceInfoEntry(R.string.build_version, "RMX5200_17.0.0.106(CN01) 97 b45da55c"),
+                DeviceInfoEntry(R.string.flash, "SKhynix HN8T274EJKX130 A401"),
+                DeviceInfoEntry(R.string.home_device_pos, "SAMPLE-PCB-000001"),
+                DeviceInfoEntry(R.string.home_device_sas, "SAMPLE-SERIAL-000001 SAMPLE-CHIP-000001"),
+            ),
+        )
+    }
+
     @Test
     fun `both themes present device values as body text in light and dark appearances`() {
         for (mode in UiMode.entries) {
@@ -69,7 +91,7 @@ class HomeDashboardTest {
     @Test
     fun `home actions remain available and expansion survives theme changes and recreation`() {
         val saved: Bundle
-        HomeHost(UiMode.Miuix, ColorMode.LIGHT, update = true).use { h ->
+        HomeHost(UiMode.Coui, ColorMode.LIGHT, update = true).use { h ->
             h.ui.clickLabel(h.ui.activity.getString(R.string.menu_reboot))
             h.ui.clickLabel(h.ui.activity.getString(R.string.about_title))
             assertEquals(1, h.restart)
@@ -134,9 +156,9 @@ class HomeDashboardTest {
     }
 
     @Test
-    fun `Miuix active status stays readable with large text and dynamic colors`() {
+    fun `Coui active status stays readable with large text and dynamic colors`() {
         for (color in listOf(ColorMode.LIGHT, ColorMode.DARK, ColorMode.MONET_LIGHT, ColorMode.MONET_DARK)) {
-            HomeHost(UiMode.Miuix, color, width = 720, fontScale = 1.4f, rtl = true).use { h ->
+            HomeHost(UiMode.Coui, color, width = 720, fontScale = 1.4f, rtl = true).use { h ->
                 val version = "${h.ui.activity.getString(R.string.version)}: 1.3.5_beta (22848)"
                 val framework = "${h.ui.activity.getString(R.string.framework_version)} LSPosed v2.2.1 (7912)"
                 assertFalse(h.layout(version).hasVisualOverflow)
@@ -175,10 +197,10 @@ class HomeDashboardTest {
                     LocalDensity provides Density(2f, fontScale),
                     LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
                     LocalUiMode provides this.mode,
-                    LocalEnableFloatingBottomBar provides (this.mode == UiMode.Miuix),
+                    LocalEnableFloatingBottomBar provides (this.mode == UiMode.Material),
                     LocalFloatingBottomBarStyle provides FloatingBottomBarStyle.IosLike,
                 ) {
-                    LuckyTheme(AppSettings(colorMode = color, dynamicColor = false), uiMode = this.mode) {
+                    AppTheme(AppSettings(colorMode = color, dynamicColor = false), uiMode = this.mode) {
                         val pager = rememberMainPagerState(rememberPagerState(initialPage = 2) { 5 })
                         MainTabs(pager, isActive = true) { tab, _ ->
                             if (tab == MainTab.Home) {
@@ -221,26 +243,5 @@ class HomeDashboardTest {
         }
 
         override fun close() = ui.close()
-    }
-
-    companion object {
-        private const val model = "realme RMX5200 真我 GT8 Pro"
-        private const val rootLine = "Root来源: 3.3.1 (32680)"
-        private const val frameworkLine = "框架版本: LSPosed v2.2.1 (7912)"
-        private val sample = HomeDashboardState(
-            moduleActive = true, moduleVersion = "1.3.5_beta (22848)",
-            rootVersion = "Root 来源：3.3.1 (32680)", frameworkVersion = "框架版本：LSPosed v2.2.1 (7912)",
-            showNotice = true,
-            deviceInfo = listOf(
-                DeviceInfoEntry(R.string.model, model),
-                DeviceInfoEntry(R.string.system, "Android 17 (37) · OS V17.0.0 (40)"),
-                DeviceInfoEntry(R.string.version, "RMX5200_11.C.27_1270_202610051850"),
-                DeviceInfoEntry(R.string.product, "RMX5200 RE6030L1 SM8850 24624 B"),
-                DeviceInfoEntry(R.string.build_version, "RMX5200_17.0.0.106(CN01) 97 b45da55c"),
-                DeviceInfoEntry(R.string.flash, "SKhynix HN8T274EJKX130 A401"),
-                DeviceInfoEntry(R.string.home_device_pos, "SAMPLE-PCB-000001"),
-                DeviceInfoEntry(R.string.home_device_sas, "SAMPLE-SERIAL-000001 SAMPLE-CHIP-000001"),
-            ),
-        )
     }
 }

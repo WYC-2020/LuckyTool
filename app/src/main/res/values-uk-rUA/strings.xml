@@ -6,7 +6,7 @@
     <string name="nav_function">Функції</string>
     <string name="nav_home">Головна сторінка</string>
     <string name="nav_other">Інше</string>
-    <string name="nav_log">Логи</string>
+    <string name="nav_search">Пошук</string>
     <string name="nav_setting">Налаштування</string>
     <string name="fragment_source">Джерело коду</string>
     <!-- Settings -->
@@ -75,7 +75,7 @@
     <string name="participate_translation_summary">Перейдіть в Github, щоб додати свій переклад</string>
     <!-- check lsposed -->
     <string name="system_not_support">Поточна система не підтримується!</string>
-    <string name="unsupported_xposed">Module not activated detected.\nPlease use the LSPosed framework for activation after activation!</string>
+    <string name="unsupported_xposed">Будь ласка, активуйте модуль у LSPosed і повторіть спробу!</string>
     <string name="unsupported_os">Непідтримувана система</string>
     <string name="unsupported_os_summary">Оскільки модуль підтримує лише системи ColorOS 12 і вище, будь ласка, вживайте заходи безпеки!</string>
     <string name="no_root">Немає root-прав</string>
@@ -99,6 +99,8 @@
     <string name="restart_only_this_page_scope">Перезавантажити лише цю область</string>
     <string name="reboot">Перезавантажити систему</string>
     <string name="fast_reboot">Швидке перезавантаження</string>
+    <string name="reboot_message">Перезавантажити систему?\nПристрій перезавантажиться негайно, незбережені дані буде втрачено.</string>
+    <string name="fast_reboot_message">Швидке перезавантаження?\nУсі застосунки закриються, система перезапуститься без вимкнення.</string>
     <string name="menu_versioninfo">Інформація про версію</string>
     <string name="scope_version_info">Показати інформацію про версію</string>
     <string name="show_system_app">Показати системні додатки</string>
@@ -112,6 +114,8 @@
     <string name="replace_system_root_state_detection">Replace system root state detection</string>
     <string name="allow_untrusted_touch">Дозволити небажані торкання</string>
     <string name="allow_untrusted_touch_summary">Solve the problem that some windows or pages are blocked and cannot be touched</string>
+    <string name="usb_debugging_auto_authorize">Автоматична авторизація налагодження USB</string>
+    <string name="usb_debugging_auto_authorize_summary">Увімкніть налагодження USB у параметрах розробника</string>
     <string name="customized_gaussian_blur_effect_level">Customized gaussian blur effect level</string>
     <string name="disable_temperature_control_listener">Disable temperature control listener</string>
     <string name="set_ltpo_refresh_rate_mode">Set LTPO refresh rate mode</string>
@@ -559,8 +563,6 @@
     <string name="SoundRelated">Sound Related</string>
     <string name="media_volume_level">Рівень гучності мультимедіа</string>
     <string name="media_volume_level_summary">Встановіть 0, щоб вимкнути цю функцію, перезавантажте систему, щоб зміни набули чинності</string>
-    <string name="enable_super_volume_mode">Enable super volume mode</string>
-    <string name="enable_super_volume_mode_for_calls">Enable super volume mode for calls</string>
     <string name="minimum_volume_level_can_be_zero">Minimum volume level can be zero</string>
     <string name="enable_app_specific_media_volume">Enable app-specific media volume</string>
     <string name="enable_app_specific_media_volume_summary">This function requires system support to take effect</string>
@@ -766,10 +768,6 @@
     <string name="Screenshot">Скріншот екрану</string>
     <string name="remove_system_screenshot_delay">Прибрати затримку скріншота системи</string>
     <string name="remove_system_screenshot_delay_summary">Перший скріншот може не працювати</string>
-    <string name="remove_screenshot_privacy_limit">Видалити обмеження конфіденційності скріншотів</string>
-    <string name="remove_screenshot_privacy_limit_summary">Зніміть обмеження щодо конфіденційності, які не можуть бути перехоплені. Вимкніть FLAG_SECURE, якщо це ніяк не вплине</string>
-    <string name="disable_flag_secure">Вимкнути FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">Більшість додатків не можуть знімати, ділитися скріншотом або обмежують запис\nПотрібен LSPosed 1.8.6+</string>
     <string name="remove_page_limit_for_long_screenshots">Remove the page limit for long screenshots</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Only some scenarios are supported, please test the specific situation by yourself</string>
     <string name="enable_png_save_format">Enable PNG save format</string>

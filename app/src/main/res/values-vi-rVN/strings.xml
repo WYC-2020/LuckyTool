@@ -8,7 +8,7 @@
     <string name="nav_function">Chức năng</string>
     <string name="nav_home">Trang chủ</string>
     <string name="nav_other">Khác</string>
-    <string name="nav_log">Nhật ký</string>
+    <string name="nav_search">Tìm kiếm</string>
     <string name="nav_setting">Cài đặt</string>
     <string name="fragment_source">Mã nguồn</string>
     <!-- Settings -->
@@ -77,7 +77,7 @@
     <string name="participate_translation_summary">Truy cập Github để đóng góp bản dịch của bạn</string>
     <!-- check lsposed -->
     <string name="system_not_support">Hệ thống hiện tại không hỗ trợ!</string>
-    <string name="unsupported_xposed">Phát hiện mô-đun chưa được kích hoạt\nVui lòng sử dụng khung LSPosed để kích hoạt mô-đun và thử lại!</string>
+    <string name="unsupported_xposed">Vui lòng kích hoạt mô-đun trong khung LSPosed và thử lại!</string>
     <string name="unsupported_os">Hệ thống không được hỗ trợ</string>
     <string name="unsupported_os_summary">Vì mô-đun này chỉ hỗ trợ các hệ thống ColorOS 12 trở lên nên hãy đảm bảo thực hiện các biện pháp an toàn!</string>
     <string name="no_root">Không có quyền Root</string>
@@ -101,6 +101,8 @@
     <string name="restart_only_this_page_scope">Chỉ khởi động lại phạm vi trang này</string>
     <string name="reboot">Khởi động lại hệ thống</string>
     <string name="fast_reboot">Khởi động nhanh</string>
+    <string name="reboot_message">Khởi động lại hệ thống?\nThiết bị sẽ khởi động lại ngay và dữ liệu chưa lưu sẽ mất.</string>
+    <string name="fast_reboot_message">Khởi động lại nhanh?\nMọi ứng dụng sẽ đóng và hệ thống khởi động lại mà không tắt máy.</string>
     <string name="menu_versioninfo">Thông tin phiên bản</string>
     <string name="scope_version_info">Thông tin phiên bản</string>
     <string name="show_system_app">Hiển thị ứng dụng hệ thống</string>
@@ -114,6 +116,8 @@
     <string name="replace_system_root_state_detection">Thay thế phát hiện trạng thái root của hệ thống</string>
     <string name="allow_untrusted_touch">Cho phép chạm không đáng tin cậy</string>
     <string name="allow_untrusted_touch_summary">Giải quyết vấn đề một số cửa sổ hoặc trang bị chặn không thể chạm vào</string>
+    <string name="usb_debugging_auto_authorize">Tự động cấp quyền gỡ lỗi USB</string>
+    <string name="usb_debugging_auto_authorize_summary">Hãy bật gỡ lỗi USB trong tùy chọn nhà phát triển</string>
     <string name="customized_gaussian_blur_effect_level">Tùy chỉnh mức độ hiệu ứng nhòe Gaussian</string>
     <string name="disable_temperature_control_listener">Tắt trình nghe kiểm soát nhiệt độ</string>
     <string name="set_ltpo_refresh_rate_mode">Đặt chế độ tốc độ làm mới LTPO</string>
@@ -561,8 +565,6 @@
     <string name="SoundRelated">Âm thanh</string>
     <string name="media_volume_level">Mức âm lượng</string>
     <string name="media_volume_level_summary">Đặt thành 0 để tắt chức năng này, khởi động lại hệ thống để có hiệu lực</string>
-    <string name="enable_super_volume_mode">Bật chế độ siêu âm lượng</string>
-    <string name="enable_super_volume_mode_for_calls">Bật chế độ siêu âm lượng cho cuộc gọi</string>
     <string name="minimum_volume_level_can_be_zero">Mức âm lượng có thể thấp đến mức 0</string>
     <string name="enable_app_specific_media_volume">Bật âm lượng phương tiện dành riêng cho ứng dụng</string>
     <string name="enable_app_specific_media_volume_summary">Tính năng này yêu cầu sự hỗ trợ của hệ thống để có hiệu lực</string>
@@ -768,10 +770,6 @@
     <string name="Screenshot">Ảnh chụp màn hình</string>
     <string name="remove_system_screenshot_delay">Xóa độ trễ ảnh chụp màn hình hệ thống</string>
     <string name="remove_system_screenshot_delay_summary">Ảnh chụp màn hình đầu tiên có thể không có hiệu lực</string>
-    <string name="remove_screenshot_privacy_limit">Xóa giới hạn quyền riêng tư của ảnh chụp màn hình</string>
-    <string name="remove_screenshot_privacy_limit_summary">Xóa các hạn chế về quyền riêng tư không thể bị chặn. Vô hiệu hóa FLAG_SECURE nếu điều này không có hiệu lực</string>
-    <string name="disable_flag_secure">Vô hiệu hóa FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">Giải quyết hầu hết các ứng dụng không thể chụp, chia sẻ màn hình hoặc giới hạn ghi, thêm các trường ứng dụng tương ứng+</string>
     <string name="remove_page_limit_for_long_screenshots">Xóa giới hạn số trang cho ảnh chụp màn hình dài</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Chỉ hỗ trợ một số trường hợp, vui lòng tự kiểm tra các tình huống cụ thể</string>
     <string name="enable_png_save_format">Bật định dạng lưu PNG</string>

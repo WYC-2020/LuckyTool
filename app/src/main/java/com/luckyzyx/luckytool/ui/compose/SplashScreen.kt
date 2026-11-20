@@ -37,6 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luckyzyx.luckytool.R
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiCircularProgressIndicator
+import com.luckyzyx.luckytool.ui.theme.LocalUiMode
+import com.luckyzyx.luckytool.ui.theme.UiMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -71,7 +74,7 @@ private val SplashLogoCorner = 28.dp
  * 是场景内弹层、就在下方等着，闪屏淡出后即露出，两者不冲突。
  */
 @Composable
-fun LuckySplashHost(content: @Composable () -> Unit) {
+fun SplashHost(content: @Composable () -> Unit) {
     var isSplashVisible by rememberSaveable { mutableStateOf(true) }
     val splashAlpha = remember { Animatable(1f) }
 
@@ -106,7 +109,7 @@ fun LuckySplashHost(content: @Composable () -> Unit) {
  * 所以不需要淡出动画。
  *
  * 配色与闪屏同源（[R.color.splash_background] / [R.color.splash_foreground]）：闪屏淡出后
- * 只多出一个进度圈，不换底色。本层由 [LuckySplashHost] 的 content 组合、位于闪屏之下，
+ * 只多出一个进度圈，不换底色。本层由 [SplashHost] 的 content 组合、位于闪屏之下，
  * 闪屏还在时用户看不到它。
  */
 @Composable
@@ -119,10 +122,16 @@ fun ActivationLoadingLayer(modifier: Modifier = Modifier) {
             .pointerInput(Unit) { detectTapGestures { } },
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(
-            color = colorResource(R.color.splash_foreground),
-            strokeWidth = 3.dp,
-        )
+        val foreground = colorResource(R.color.splash_foreground)
+        // 两条外观线各用各自的原生进度圈：M3 的尺寸与粗细由调用点给，COUI 的固定 32dp。
+        when (LocalUiMode.current) {
+            UiMode.Material -> CircularProgressIndicator(
+                color = foreground,
+                strokeWidth = 3.dp,
+            )
+
+            UiMode.Coui -> CouiCircularProgressIndicator(color = foreground)
+        }
     }
 }
 
@@ -180,7 +189,7 @@ private fun SplashLayer(modifier: Modifier = Modifier) {
                 .clip(RoundedCornerShape(SplashLogoCorner)),
         )
         Spacer(modifier = Modifier.height(20.dp))
-        // 文字走 BasicText：闪屏不依赖 Material / Miuix 任意外观线（两条线都可能被用户切换）
+        // 文字走 BasicText：闪屏不依赖 Material / COUI 任意外观线（两条线都可能被用户切换）
         BasicText(
             text = stringResource(R.string.app_name),
             modifier = Modifier.graphicsLayer {

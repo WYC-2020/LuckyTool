@@ -41,6 +41,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
@@ -50,15 +51,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.itos.coui.layout.CouiPageDefaults
+import com.itos.coui.layout.Divider as CouiDivider
+import com.itos.coui.text.CouiTextKind
+import com.itos.coui.text.Text as CouiText
+import com.itos.coui.theme.CouiTheme
 import com.luckyzyx.luckytool.R
 import com.luckyzyx.luckytool.ui.compose.components.LocalScopeListState
 import com.luckyzyx.luckytool.ui.theme.LocalUiMode
 import com.luckyzyx.luckytool.ui.theme.UiMode
 import kotlinx.coroutines.isActive
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.HorizontalDivider as MiuixHorizontalDivider
-import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
-import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
 /** 右区顺序偏好键（宿主 `statusIcons` 容器内的图标顺序，逗号分隔槽位名；空 = 宿主默认顺序） */
 const val STATUS_BAR_ICON_ORDER_RIGHT_KEY = "statusbar_icon_order_right"
@@ -103,7 +105,7 @@ internal const val STATUS_BAR_ICON_ORDER_LEFT_EMPTY_MARKER = "__left_zone_empty_
 private val OrderItemHeight = 64.dp
 
 /** 被拖行进入距列表可视区上下边缘这个范围时开始自动滚动 */
-private val AutoScrollEdge = 150.dp
+private val AutoScrollEdge = 48.dp
 
 /** 自动滚动最快时每帧的位移（贴住边缘时） */
 private val AutoScrollMaxSpeed = 12.dp
@@ -111,8 +113,9 @@ private val AutoScrollMaxSpeed = 12.dp
 /**
  * 自动滚动的每帧位移（纯函数，便于单测）。
  *
- * [visualTop] 是此刻被拖行的窗口 Y，[viewportHeight] 是窗口高度，[edge] 是触发自动滚动的边缘宽度，
- * [maxSpeed] 是贴住边缘时的每帧位移。返回值正 = 向列表下方滚（内容上移），负 = 向上滚，0 = 不滚。
+ * [visualTop] 是被拖行视觉中心的窗口 Y（长按整行和手柄拖动时手指都在行中心附近），
+ * [viewportHeight] 是窗口高度，[edge] 是触发自动滚动的边缘宽度，[maxSpeed] 是贴住边缘时的每帧位移。
+ * 返回值正 = 向列表下方滚（内容上移），负 = 向上滚，0 = 不滚。
  */
 internal fun autoScrollStep(
     visualTop: Float,
@@ -336,6 +339,57 @@ internal fun zoneDrop(items: MutableList<String>, leftCount: Int, from: Int, to:
 }
 
 /**
+ * 列表区域条目展示数（排除左区占位条目）。
+ */
+internal fun zoneDisplayCounts(items: List<String>, leftCount: Int): Pair<Int, Int> {
+    val hasMarker = items.firstOrNull() == STATUS_BAR_ICON_ORDER_LEFT_EMPTY_MARKER
+    val left = if (hasMarker) 0 else leftCount
+    val right = items.size - leftCount
+    return left to right
+}
+
+/**
+ * 拖动坐标快照与外推补齐。
+ *
+ * 当某行未发生视觉位移且未被 Compose 重新派发 [onGloballyPositioned] 时，
+ * 借助已知锚点行的实测 Y 与行高 [step] 线性推算全部行的窗口 Y，保证落位判断覆盖所有槽位。
+ */
+internal fun extrapolateRowTops(
+    items: List<String>,
+    rowTops: Map<String, Float>,
+    targetItem: String,
+    step: Float,
+): Pair<Float, Map<String, Float>> {
+    val snapshot = HashMap<String, Float>(items.size)
+    snapshot.putAll(rowTops)
+    val from = items.indexOf(targetItem)
+    val baseTop = rowTops[targetItem]
+    val estimatedTargetTop: Float
+    if (baseTop != null && from in items.indices) {
+        estimatedTargetTop = baseTop
+        for (i in items.indices) {
+            if (items[i] !in snapshot) {
+                snapshot[items[i]] = baseTop + (i - from) * step
+            }
+        }
+    } else {
+        val anchor = items.indices.firstOrNull { items[it] in snapshot }
+        if (anchor != null && from in items.indices) {
+            val anchorTop = snapshot[items[anchor]]!!
+            estimatedTargetTop = anchorTop + (from - anchor) * step
+            for (i in items.indices) {
+                if (items[i] !in snapshot) {
+                    snapshot[items[i]] = anchorTop + (i - anchor) * step
+                }
+            }
+        } else {
+            estimatedTargetTop = rowTops[targetItem] ?: 0f
+        }
+    }
+    return estimatedTargetTop to snapshot
+}
+
+/**
  * 两区域排序列表（左区 / 右区，各自带序号）。
  *
  * 拖动方式两种，走同一套状态机：按住右侧手柄立即拖动（48dp 热区），或长按任意一行拖动。
@@ -381,8 +435,9 @@ fun StatusBarIconOrderZones(
     val autoScrollEdge = with(density) { AutoScrollEdge.toPx() }
     val autoScrollSpeed = with(density) { AutoScrollMaxSpeed.toPx() }
 
-    // 每行的窗口 Y（普通 map，不参与快照，避免逐帧重组）
-    val rowTops = remember(session) { HashMap<String, Float>() }
+    // 每行的 LayoutCoordinates（跨偏好更新保留：未位移的行不会重新回调，缓存坐标对象而不是窗口 Y，
+    // positionInWindow 读数在拖动开始那一刻是实时的，页面滚动后不会整体旧一个滚动量）
+    val rowCoords = remember { HashMap<String, LayoutCoordinates>() }
 
     /** 拖动开始时全部行的窗口 Y 快照；页面滚动期间统一减去 [scrolledBy] 即得当前位置 */
     val startTops = remember(session) { HashMap<String, Float>() }
@@ -402,7 +457,7 @@ fun StatusBarIconOrderZones(
     fun targetFromPosition(fingerY: Float): Int {
         var count = 0
         for (index in items.indices) {
-            // 快照在拖动开始时由 onGloballyPositioned 填满；缺失的行跳过（宁可少算也不给错位置）
+            // 快照在拖动开始时由 onGloballyPositioned 与行距推算填满；缺失的行跳过
             val top = (startTops[items[index]] ?: continue) - scrolledBy[0]
             if (fingerY > top + step / 2f) count++
         }
@@ -432,11 +487,10 @@ fun StatusBarIconOrderZones(
         derivedStateOf {
             val from = dragFrom
             val item = draggingItem
+            val (baseLeft, baseRight) = zoneDisplayCounts(items, leftCount)
             val hasMarker = items.firstOrNull() == STATUS_BAR_ICON_ORDER_LEFT_EMPTY_MARKER
-            // 右区实际项数（占位条目不计入任何一区）
-            val rightSize = items.size - leftCount - (if (hasMarker) 1 else 0)
             if (item == null || from !in items.indices) {
-                (if (hasMarker) 0 else leftCount) to rightSize
+                baseLeft to baseRight
             } else {
                 val to = dragTarget
                 val left = when {
@@ -448,7 +502,7 @@ fun StatusBarIconOrderZones(
                 }
                 // 被拖项从右区落入左区（含占位槽）时右区少一项
                 val leavesRight = leftCount in (to + 1)..from
-                left to (rightSize - if (leavesRight) 1 else 0)
+                left to (baseRight - if (leavesRight) 1 else 0)
             }
         }
     }
@@ -463,7 +517,8 @@ fun StatusBarIconOrderZones(
     /** 松手落位：换位（跨区时区界同步增减），然后写回偏好（占位条目不落偏好），宿主侧实时生效 */
     fun commitDrag() {
         val from = dragFrom
-        val to = targetFromPosition(dragRowTop[0] + (dragDelta.floatValue - scrolledBy[0]))
+        val fingerY = dragRowTop[0] + (dragDelta.floatValue - scrolledBy[0])
+        val to = targetFromPosition(fingerY)
         resetDrag()
         if (from !in items.indices || to !in items.indices || from == to) return
         leftCount = zoneDrop(items, leftCount, from, to)
@@ -473,20 +528,32 @@ fun StatusBarIconOrderZones(
     }
 
     // afterLongPress = true：长按整行开始拖动；false：按住手柄立即拖动。
-    // pointerInput 的 key 与位置无关，拖动期间即使发生重组也不会重启手势检测器。
+    // pointerInput 绑定 item 与手势模式，避免外部重组或偏好回调打断手势检测器。
+    // onGloballyPositioned 仅挂在整行（afterLongPress=true），手柄 48dp 内部 Box 不重复挂载，避免测量高度偏差。
     val dragModifierFor: (String, Boolean) -> Modifier = { item, afterLongPress ->
         Modifier
-            // 记住每一行的窗口 Y：拖动开始时快照全部行位置，落位下标按实测位置计算
-            .onGloballyPositioned { rowTops[item] = it.positionInWindow().y }
-            .pointerInput(session, afterLongPress) {
+            .then(
+                if (afterLongPress) {
+                    Modifier.onGloballyPositioned { rowCoords[item] = it }
+                } else Modifier
+            )
+            .pointerInput(item, afterLongPress) {
                 val onStart = {
                     draggingItem = item
-                    dragFrom = items.indexOf(item)
+                    val from = items.indexOf(item)
+                    dragFrom = from
                     dragDelta.floatValue = 0f
-                    dragRowTop[0] = rowTops[item] ?: 0f
                     scrolledBy[0] = 0f
+                    // 行在页面滚动后不会重发 onGloballyPositioned，缓存的窗口 Y 会整体旧一个滚动量；
+                    // 拖动开始前从 LayoutCoordinates 现读，得到此刻真实位置，自动滚动才不会被误触发。
+                    val liveTops = HashMap<String, Float>(rowCoords.size)
+                    rowCoords.forEach { (key, coords) ->
+                        if (coords.isAttached) liveTops[key] = coords.positionInWindow().y
+                    }
+                    val (targetTop, extrapolated) = extrapolateRowTops(items, liveTops, item, step)
+                    dragRowTop[0] = targetTop
                     startTops.clear()
-                    startTops.putAll(rowTops)
+                    startTops.putAll(extrapolated)
                 }
                 val onDrag: (PointerInputChange, Offset) -> Unit = { change, amount ->
                     change.consume()
@@ -518,9 +585,10 @@ fun StatusBarIconOrderZones(
         if (draggingItem == null || viewportHeight <= 0f) return@LaunchedEffect
         while (isActive && draggingItem != null) {
             withFrameNanos { }
-            // 窗口 Y = 拖动开始时的行位置 + 手指位移（自动滚动的补偿量在两者里抵消）
-            val visualTop = dragRowTop[0] + (dragDelta.floatValue - scrolledBy[0])
-            val dy = autoScrollStep(visualTop, viewportHeight, autoScrollEdge, autoScrollSpeed)
+            // 视觉中心窗口 Y = 拖动开始时的行中心 + 手指位移（自动滚动的补偿量在两者里抵消）；
+            // 用中心而不是行顶判定，否则行顶还没进边缘区、手指却已经在区里时会误触发滚动。
+            val visualCenter = dragRowTop[0] + step / 2f + (dragDelta.floatValue - scrolledBy[0])
+            val dy = autoScrollStep(visualCenter, viewportHeight, autoScrollEdge, autoScrollSpeed)
             if (dy == 0f) continue
             val consumed = listState.scrollBy(dy)
             if (consumed != 0f) {
@@ -530,7 +598,15 @@ fun StatusBarIconOrderZones(
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = CouiPageDefaults.horizontalMargin)
+            .fillMaxWidth()
+            .background(
+                CouiPageDefaults.themeColors().card,
+                CouiPageDefaults.shape,
+            ),
+    ) {
         OrderResetRow(
             onReset = {
                 // 重置 = 全新安装状态：左区「时钟 + 通知图标」、右区宿主默认顺序。
@@ -555,7 +631,7 @@ fun StatusBarIconOrderZones(
                 // 左区被搬空时的占位行：占住下标 0，让左区始终可见、右区第一位置（下标 1）照常可用
                 LeftZoneEmptyRow(
                     modifier = Modifier.onGloballyPositioned {
-                        rowTops[STATUS_BAR_ICON_ORDER_LEFT_EMPTY_MARKER] = it.positionInWindow().y
+                        rowCoords[STATUS_BAR_ICON_ORDER_LEFT_EMPTY_MARKER] = it
                     },
                     highlighted = draggingItem != null && dragTarget == index,
                 )
@@ -610,22 +686,6 @@ private fun OrderResetRow(onReset: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when (LocalUiMode.current) {
-            UiMode.Miuix -> {
-                Column(modifier = Modifier.weight(1f)) {
-                    MiuixText(text = title, style = MiuixTheme.textStyles.main)
-                    MiuixText(
-                        text = summary,
-                        color = MiuixTheme.colorScheme.onBackgroundVariant,
-                        style = MiuixTheme.textStyles.footnote1,
-                    )
-                }
-                MiuixIcon(
-                    imageVector = Icons.Filled.RestartAlt,
-                    contentDescription = null,
-                    tint = MiuixTheme.colorScheme.onBackgroundVariant,
-                )
-            }
-
             UiMode.Material -> {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -645,6 +705,27 @@ private fun OrderResetRow(onReset: () -> Unit) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // COUI 线：标题/说明取自页面配色，尾随图标的色调跟随前景色
+            UiMode.Coui -> {
+                val colors = CouiPageDefaults.themeColors()
+                Column(modifier = Modifier.weight(1f)) {
+                    CouiText(
+                        text = title,
+                        kind = CouiTextKind.ItemTitle,
+                        color = colors.title,
+                    )
+                    CouiText(
+                        text = summary,
+                        kind = CouiTextKind.ItemSummary,
+                        color = colors.summary,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Filled.RestartAlt,
+                    contentDescription = null,
+                    tint = CouiTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }
@@ -655,19 +736,19 @@ private fun ZoneHeader(text: String, topPadding: Dp) {
     val modifier = Modifier
         .fillMaxWidth()
         .padding(start = 16.dp, end = 16.dp, top = topPadding, bottom = 4.dp)
-    if (LocalUiMode.current == UiMode.Miuix) {
-        MiuixText(
-            text = text,
-            modifier = modifier,
-            color = MiuixTheme.colorScheme.onBackgroundVariant,
-            style = MiuixTheme.textStyles.footnote1,
-        )
-    } else {
-        Text(
+    when (LocalUiMode.current) {
+        UiMode.Material -> Text(
             text = text,
             modifier = modifier,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
+        )
+        // COUI 线：分区标题用强调色，字号与间距沿用调用点传入的修饰符
+        UiMode.Coui -> CouiText(
+            text = text,
+            modifier = modifier,
+            kind = CouiTextKind.GroupTitle,
+            color = CouiPageDefaults.themeColors().accent,
         )
     }
 }
@@ -675,10 +756,10 @@ private fun ZoneHeader(text: String, topPadding: Dp) {
 /** 区界分隔线（列表内的分组线，两侧留 16dp 内缩） */
 @Composable
 private fun ZoneDivider(modifier: Modifier = Modifier) {
-    if (LocalUiMode.current == UiMode.Miuix) {
-        MiuixHorizontalDivider(modifier)
-    } else {
-        HorizontalDivider(modifier)
+    when (LocalUiMode.current) {
+        UiMode.Material -> HorizontalDivider(modifier)
+        // COUI 线用库内分隔线，两端内缩仍由调用点的修饰符决定
+        UiMode.Coui -> CouiDivider(modifier = modifier, startIndent = 0.dp, endIndent = 0.dp)
     }
 }
 
@@ -686,35 +767,12 @@ private fun ZoneDivider(modifier: Modifier = Modifier) {
  * 左区被搬空时的占位行：让「左侧区域」始终可见，并充当「把图标拖回左侧」的落位区。
  *
  * [highlighted] 由拖动状态传入：落位下标为 0 时高亮，与普通行的落位槽高亮同色。
- * [modifier] 由调用点传入（用于把占位行的窗口位置登记进 rowTops，落位计算按实测位置走）。
+ * [modifier] 由调用点传入（用于把占位行的 LayoutCoordinates 登记进 rowCoords，落位计算按实测位置走）。
  */
 @Composable
 private fun LeftZoneEmptyRow(modifier: Modifier, highlighted: Boolean) {
     val text = stringResource(R.string.statusbar_icon_order_left_empty)
     when (LocalUiMode.current) {
-        UiMode.Miuix -> Row(
-            modifier = Modifier
-                .then(modifier)
-                .fillMaxWidth()
-                .height(OrderItemHeight)
-                .then(
-                    if (highlighted) {
-                        Modifier.background(MiuixTheme.colorScheme.primary.copy(alpha = 0.08f))
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MiuixText(
-                text = text,
-                color = MiuixTheme.colorScheme.onBackgroundVariant,
-                style = MiuixTheme.textStyles.footnote1,
-            )
-        }
-
         UiMode.Material -> Row(
             modifier = Modifier
                 .then(modifier)
@@ -735,6 +793,29 @@ private fun LeftZoneEmptyRow(modifier: Modifier, highlighted: Boolean) {
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // COUI 线：落位高亮铺强调色的低透明度底，与普通行的落位槽同源
+        UiMode.Coui -> Row(
+            modifier = Modifier
+                .then(modifier)
+                .fillMaxWidth()
+                .height(OrderItemHeight)
+                .then(
+                    if (highlighted) {
+                        Modifier.background(CouiTheme.colorScheme.accent.copy(alpha = 0.10f))
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CouiText(
+                text = text,
+                kind = CouiTextKind.ItemSummary,
+                color = CouiPageDefaults.themeColors().summary,
             )
         }
     }
@@ -759,17 +840,6 @@ private fun OrderItemRow(
     handleDragModifier: Modifier,
 ) {
     when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixOrderItemRow(
-            number,
-            label,
-            slot,
-            dragging,
-            highlighted,
-            rowOffset,
-            rowDragModifier,
-            handleDragModifier
-        )
-
         UiMode.Material -> MaterialOrderItemRow(
             number,
             label,
@@ -780,63 +850,16 @@ private fun OrderItemRow(
             rowDragModifier,
             handleDragModifier
         )
-    }
-}
-
-@Composable
-private fun MiuixOrderItemRow(
-    number: Int,
-    label: String,
-    slot: String,
-    dragging: Boolean,
-    highlighted: Boolean,
-    rowOffset: () -> Float,
-    rowDragModifier: Modifier,
-    handleDragModifier: Modifier,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(OrderItemHeight)
-            .zIndex(if (dragging) 1f else 0f)
-            .graphicsLayer { translationY = rowOffset() }
-            .then(
-                when {
-                    dragging -> Modifier.background(MiuixTheme.colorScheme.onBackground.copy(alpha = 0.06f))
-                    highlighted -> Modifier.background(MiuixTheme.colorScheme.primary.copy(alpha = 0.08f))
-                    else -> Modifier
-                }
-            )
-            .then(rowDragModifier)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MiuixText(
-            text = number.toString(),
-            modifier = Modifier.width(28.dp),
-            color = MiuixTheme.colorScheme.onBackgroundVariant,
-            style = MiuixTheme.textStyles.body2,
+        UiMode.Coui -> CouiOrderItemRow(
+            number,
+            label,
+            slot,
+            dragging,
+            highlighted,
+            rowOffset,
+            rowDragModifier,
+            handleDragModifier
         )
-        Column(modifier = Modifier.weight(1f)) {
-            MiuixText(text = label, style = MiuixTheme.textStyles.main)
-            MiuixText(
-                text = slot,
-                color = MiuixTheme.colorScheme.onBackgroundVariant,
-                style = MiuixTheme.textStyles.footnote1,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .then(handleDragModifier),
-            contentAlignment = Alignment.Center,
-        ) {
-            MiuixIcon(
-                imageVector = Icons.Filled.Menu,
-                contentDescription = null,
-                tint = MiuixTheme.colorScheme.onBackgroundVariant,
-            )
-        }
     }
 }
 
@@ -896,6 +919,69 @@ private fun MaterialOrderItemRow(
                 imageVector = Icons.Filled.Menu,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** COUI 线的条目行：排版与尺寸同 Material 线，取色改走页面配色与强调色 */
+@Composable
+private fun CouiOrderItemRow(
+    number: Int,
+    label: String,
+    slot: String,
+    dragging: Boolean,
+    highlighted: Boolean,
+    rowOffset: () -> Float,
+    rowDragModifier: Modifier,
+    handleDragModifier: Modifier,
+) {
+    val colors = CouiPageDefaults.themeColors()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(OrderItemHeight)
+            .zIndex(if (dragging) 1f else 0f)
+            .graphicsLayer { translationY = rowOffset() }
+            .then(
+                when {
+                    dragging -> Modifier.background(CouiTheme.colorScheme.container)
+                    highlighted -> Modifier.background(CouiTheme.colorScheme.accent.copy(alpha = 0.10f))
+                    else -> Modifier
+                }
+            )
+            .then(rowDragModifier)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CouiText(
+            text = number.toString(),
+            modifier = Modifier.width(28.dp),
+            kind = CouiTextKind.ItemSummary,
+            color = colors.summary,
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            CouiText(
+                text = label,
+                kind = CouiTextKind.ItemTitle,
+                color = colors.title,
+            )
+            CouiText(
+                text = slot,
+                kind = CouiTextKind.ItemSummary,
+                color = colors.summary,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .then(handleDragModifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Menu,
+                contentDescription = null,
+                tint = CouiTheme.colorScheme.onSurface,
             )
         }
     }

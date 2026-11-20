@@ -2,9 +2,12 @@ package com.luckyzyx.luckytool.ui.compose.scopes.related
 
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -23,7 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.itos.coui.dialog.CouiDialogAction
+import com.itos.coui.dialog.CouiDialogActionStyle
+import com.itos.coui.dialog.CouiDialogDefaults
+import com.itos.coui.theme.CouiTheme
 import com.luckyzyx.luckytool.R
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiAlertDialog
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiIconButton
+import com.luckyzyx.luckytool.ui.compose.components.dialogBodyMaxHeight
 import com.luckyzyx.luckytool.ui.compose.scopes.ScopePageSpec
 import com.luckyzyx.luckytool.ui.theme.LocalUiMode
 import com.luckyzyx.luckytool.ui.theme.UiMode
@@ -39,11 +49,6 @@ import com.luckyzyx.luckytool.utils.ModulePrefs
 import com.luckyzyx.luckytool.utils.formatFileSize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Text as MiuixText
-import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -99,135 +104,146 @@ object LauncherBackupPage {
         val snapshots = snapshotsState.value
         val launcherPackage = LauncherBackupUtils.detectLauncherPackage(c)
 
-        // 备份设置
-        category(c.getString(R.string.launcher_backup_category_settings))
+        // 功能开关：总开关关闭时 hooker 不装载，本页只留这一行 —— 没有 hook，其余入口都没有意义
+        category(c.getString(R.string.launcher_backup_category_switch))
+        // 装载判定发生在桌面进程启动时，改动要重启作用域才生效；该状态在桌面进程里，重建本 Activity 影响不到它，故只在 summary 提示
         switch(
-            key = LauncherBackupPrefs.KEY_AUTO_ENABLED,
-            title = c.getString(R.string.launcher_backup_auto),
-            summary = c.getString(R.string.launcher_backup_auto_summary),
+            key = LauncherBackupPrefs.KEY_ENABLED,
+            title = c.getString(R.string.launcher_backup_enable),
+            summary = c.getString(R.string.launcher_backup_enable_summary) +
+                "\n" + c.getString(R.string.need_restart_scope),
         )
-        list(
-            key = LauncherBackupPrefs.KEY_AUTO_INTERVAL,
-            title = c.getString(R.string.launcher_backup_interval),
-            entries = LauncherBackupPrefs.INTERVAL_HOURS.map { intervalLabel(c, it) }.toTypedArray(),
-            entryValues = LauncherBackupPrefs.INTERVAL_HOURS.map { it.toString() }.toTypedArray(),
-            default = LauncherBackupPrefs.DEFAULT_INTERVAL_HOURS.toString(),
-            summary = c.getString(R.string.launcher_backup_interval_summary),
-        )
+        if (state.getBoolean(LauncherBackupPrefs.KEY_ENABLED, false)) {
+            // 备份设置
+            category(c.getString(R.string.launcher_backup_category_settings))
+            switch(
+                key = LauncherBackupPrefs.KEY_AUTO_ENABLED,
+                title = c.getString(R.string.launcher_backup_auto),
+                summary = c.getString(R.string.launcher_backup_auto_summary),
+            )
+            list(
+                key = LauncherBackupPrefs.KEY_AUTO_INTERVAL,
+                title = c.getString(R.string.launcher_backup_interval),
+                entries = LauncherBackupPrefs.INTERVAL_HOURS.map { intervalLabel(c, it) }.toTypedArray(),
+                entryValues = LauncherBackupPrefs.INTERVAL_HOURS.map { it.toString() }.toTypedArray(),
+                default = LauncherBackupPrefs.DEFAULT_INTERVAL_HOURS.toString(),
+                summary = c.getString(R.string.launcher_backup_interval_summary),
+            )
 
-        // 操作
-        category(c.getString(R.string.launcher_backup_category_actions))
-        click(
-            title = c.getString(R.string.launcher_backup_last_auto),
-            summary = lastAutoText(c, snapshots),
-            onClick = { reload() },
-        )
-        click(
-            title = c.getString(R.string.launcher_backup_status),
-            summary = statusText(c, busy, hint, notice, launcherPackage),
-            onClick = { reload() },
-        )
-        click(
-            title = c.getString(R.string.launcher_backup_backup_now),
-            summary = c.getString(R.string.launcher_backup_backup_now_summary),
-            enabled = !busy && launcherPackage != null,
-            onClick = { launchTask { backupNow(c) } },
-        )
-        click(
-            title = c.getString(R.string.launcher_backup_import),
-            summary = c.getString(R.string.launcher_backup_import_summary),
-            enabled = !busy,
-            onClick = { importLauncher?.invoke() },
-        )
-        click(
-            title = c.getString(R.string.launcher_backup_root),
-            summary = LauncherBackupTransfer.backupDir().absolutePath,
-            onClick = { reload() },
-        )
+            // 操作
+            category(c.getString(R.string.launcher_backup_category_actions))
+            click(
+                title = c.getString(R.string.launcher_backup_last_auto),
+                summary = lastAutoText(c, snapshots),
+                onClick = { reload() },
+            )
+            click(
+                title = c.getString(R.string.launcher_backup_status),
+                summary = statusText(c, busy, hint, notice, launcherPackage),
+                onClick = { reload() },
+            )
+            click(
+                title = c.getString(R.string.launcher_backup_backup_now),
+                summary = c.getString(R.string.launcher_backup_backup_now_summary),
+                enabled = !busy && launcherPackage != null,
+                onClick = { launchTask { backupNow(c) } },
+            )
+            click(
+                title = c.getString(R.string.launcher_backup_import),
+                summary = c.getString(R.string.launcher_backup_import_summary),
+                enabled = !busy,
+                onClick = { importLauncher?.invoke() },
+            )
+            click(
+                title = c.getString(R.string.launcher_backup_root),
+                summary = LauncherBackupTransfer.backupDir().absolutePath,
+                onClick = { reload() },
+            )
 
-        // 快照历史：一个快照一行，点击进恢复二次确认；行尾垃圾桶与长按都进删除二次确认
-        category(c.getString(R.string.launcher_backup_category_history))
-        if (snapshots.isEmpty()) {
-            click(title = c.getString(R.string.launcher_backup_empty), enabled = false)
-        } else {
-            snapshots.forEach { snapshot ->
-                click(
-                    // 按快照文件名做稳定的列表项 key：删除后这一项才是「移除并淡出」的那一行，
-                    // 默认的槽位 key 会把动画落到编号相同的相邻行上
-                    itemKey = "snapshot:" + snapshot.fileName,
-                    animate = true,
-                    title = snapshotTitle(c, snapshot),
-                    summary = snapshotSummary(c, snapshot),
-                    enabled = !busy && launcherPackage != null,
-                    trailing = {
-                        // 删除不需要桌面进程参与：只要求当前没有备份/恢复在跑（两类任务都走 LauncherBackupTransfer.busy）
-                        SnapshotDeleteAction(enabled = !busy) { pendingDeleteState.value = snapshot }
-                    },
-                    onLongClick = if (busy) null else ({ pendingDeleteState.value = snapshot }),
-                    onClick = { pendingRestoreState.value = snapshot },
-                )
+            // 快照历史：一个快照一行，点击进恢复二次确认；行尾垃圾桶与长按都进删除二次确认
+            category(c.getString(R.string.launcher_backup_category_history))
+            if (snapshots.isEmpty()) {
+                click(title = c.getString(R.string.launcher_backup_empty), enabled = false)
+            } else {
+                snapshots.forEach { snapshot ->
+                    click(
+                        // 按快照文件名做稳定的列表项 key：删除后这一项才是「移除并淡出」的那一行，
+                        // 默认的槽位 key 会把动画落到编号相同的相邻行上
+                        itemKey = "snapshot:" + snapshot.fileName,
+                        animate = true,
+                        title = snapshotTitle(c, snapshot),
+                        summary = snapshotSummary(c, snapshot),
+                        enabled = !busy && launcherPackage != null,
+                        trailing = {
+                            // 删除不需要桌面进程参与：只要求当前没有备份/恢复在跑（两类任务都走 LauncherBackupTransfer.busy）
+                            SnapshotDeleteAction(enabled = !busy) { pendingDeleteState.value = snapshot }
+                        },
+                        onLongClick = if (busy) null else ({ pendingDeleteState.value = snapshot }),
+                        onClick = { pendingRestoreState.value = snapshot },
+                    )
+                }
             }
-        }
 
-        // 页面宿主：自身不渲染任何内容（bare 不参与分组合并、也没有标题摘要），只承载对话框与组合期才有的能力
-        custom(bare = true) {
-            val coroutineScope = rememberCoroutineScope()
-            val busyFlow by LauncherBackupTransfer.busy.collectAsStateWithLifecycle()
-            val busyHintFlow by LauncherBackupTransfer.busyHint.collectAsStateWithLifecycle()
-            val importer = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                if (uri == null) return@rememberLauncherForActivityResult
-                coroutineScope.launch {
-                    noticeState.value = resultText(c, LauncherBackupTransfer.importFile(c, uri))
+            // 页面宿主：自身不渲染任何内容（bare 不参与分组合并、也没有标题摘要），只承载对话框与组合期才有的能力
+            custom(bare = true) {
+                val coroutineScope = rememberCoroutineScope()
+                val busyFlow by LauncherBackupTransfer.busy.collectAsStateWithLifecycle()
+                val busyHintFlow by LauncherBackupTransfer.busyHint.collectAsStateWithLifecycle()
+                val importer = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                    if (uri == null) return@rememberLauncherForActivityResult
+                    coroutineScope.launch {
+                        noticeState.value = resultText(c, LauncherBackupTransfer.importFile(c, uri))
+                        reload()
+                    }
+                }
+
+                DisposableEffect(importer, coroutineScope) {
+                    pageScope = coroutineScope
+                    importLauncher = { importer.launch("*/*") }
+                    onDispose {
+                        pageScope = null
+                        importLauncher = null
+                    }
+                }
+
+                // 忙碌态与快照列表都不在 prefs 里：由宿主把 flow 写成对象级状态，DSL 行才会重建
+                LaunchedEffect(busyFlow) { busyState.value = busyFlow }
+                LaunchedEffect(busyHintFlow) { busyHintState.value = busyHintFlow }
+                LaunchedEffect(Unit) {
+                    // 宿主退到媒体目录的快照要先搬回正式目录，搬运可能要读几 MB，放 IO 线程
+                    LauncherBackupTransfer.adoptHostFallback(c)
                     reload()
                 }
-            }
 
-            DisposableEffect(importer, coroutineScope) {
-                pageScope = coroutineScope
-                importLauncher = { importer.launch("*/*") }
-                onDispose {
-                    pageScope = null
-                    importLauncher = null
+                // 恢复必须二次确认：会先自动补拍一份 pre_restore，然后整表覆盖布局
+                val target = pendingRestoreState.value
+                if (target != null) {
+                    SnapshotConfirmDialog(
+                        title = stringResource(R.string.launcher_backup_restore_title),
+                        message = stringResource(R.string.launcher_backup_restore_message, target.fileName),
+                        confirmText = stringResource(R.string.launcher_backup_restore_confirm),
+                        onConfirm = {
+                            pendingRestoreState.value = null
+                            coroutineScope.launch { restoreNow(c, target) }
+                        },
+                        onDismiss = { pendingRestoreState.value = null },
+                    )
                 }
-            }
 
-            // 忙碌态与快照列表都不在 prefs 里：由宿主把 flow 写成对象级状态，DSL 行才会重建
-            LaunchedEffect(busyFlow) { busyState.value = busyFlow }
-            LaunchedEffect(busyHintFlow) { busyHintState.value = busyHintFlow }
-            LaunchedEffect(Unit) {
-                // 宿主退到媒体目录的快照要先搬回正式目录，搬运可能要读几 MB，放 IO 线程
-                LauncherBackupTransfer.adoptHostFallback(c)
-                reload()
-            }
-
-            // 恢复必须二次确认：会先自动补拍一份 pre_restore，然后整表覆盖布局
-            val target = pendingRestoreState.value
-            if (target != null) {
-                SnapshotConfirmDialog(
-                    title = stringResource(R.string.launcher_backup_restore_title),
-                    message = stringResource(R.string.launcher_backup_restore_message, target.fileName),
-                    confirmText = stringResource(R.string.launcher_backup_restore_confirm),
-                    onConfirm = {
-                        pendingRestoreState.value = null
-                        coroutineScope.launch { restoreNow(c, target) }
-                    },
-                    onDismiss = { pendingRestoreState.value = null },
-                )
-            }
-
-            // 删除同样要二次确认：文件删掉就没有回滚点，只能重新备份
-            val deleting = pendingDeleteState.value
-            if (deleting != null) {
-                SnapshotConfirmDialog(
-                    title = stringResource(R.string.launcher_backup_delete_title),
-                    message = stringResource(R.string.launcher_backup_delete_message, deleting.fileName),
-                    confirmText = stringResource(R.string.launcher_backup_delete_confirm),
-                    onConfirm = {
-                        pendingDeleteState.value = null
-                        deleteNow(c, deleting)
-                    },
-                    onDismiss = { pendingDeleteState.value = null },
-                )
+                // 删除同样要二次确认：文件删掉就没有回滚点，只能重新备份
+                val deleting = pendingDeleteState.value
+                if (deleting != null) {
+                    SnapshotConfirmDialog(
+                        title = stringResource(R.string.launcher_backup_delete_title),
+                        message = stringResource(R.string.launcher_backup_delete_message, deleting.fileName),
+                        confirmText = stringResource(R.string.launcher_backup_delete_confirm),
+                        onConfirm = {
+                            pendingDeleteState.value = null
+                            deleteNow(c, deleting)
+                        },
+                        onDismiss = { pendingDeleteState.value = null },
+                    )
+                }
             }
         }
     }
@@ -388,24 +404,33 @@ object LauncherBackupPage {
     }
 }
 
-/** 快照行尾的删除按钮：Material 与 Miuix 两套行的 trailing 槽共用，各取各主题的 error 色 */
+/** 快照行尾的删除按钮：危险动作在两条线上都用最强的前景/错误色 */
 @Composable
 private fun SnapshotDeleteAction(enabled: Boolean, onClick: () -> Unit) {
-    val tint = if (LocalUiMode.current == UiMode.Miuix) {
-        MiuixTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.error
-    }
-    IconButton(onClick = onClick, enabled = enabled) {
-        Icon(
-            imageVector = Icons.Filled.Delete,
+    when (LocalUiMode.current) {
+        UiMode.Material -> IconButton(onClick = onClick, enabled = enabled) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = stringResource(R.string.launcher_backup_delete),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+        // COUI 没有 error 角色：危险动作靠满强度前景色表达，描述挂在按钮点击面上，图标不再重复声明
+        UiMode.Coui -> CouiIconButton(
+            onClick = onClick,
             contentDescription = stringResource(R.string.launcher_backup_delete),
-            tint = tint,
-        )
+            enabled = enabled,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = null,
+                tint = CouiTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
 
-/** 二次确认对话框：Miuix OverlayDialog 与 Material AlertDialog 两套壳子，恢复与删除共用 */
+/** 二次确认对话框：恢复与删除共用，按外观线分派到 M3 弹窗或 COUI 弹窗 */
 @Composable
 private fun SnapshotConfirmDialog(
     title: String,
@@ -415,34 +440,41 @@ private fun SnapshotConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     when (LocalUiMode.current) {
-        // Miuix 的 OverlayDialog 没有标题区（原文案自带你做的事），保持只有正文 + 两个按钮
-        UiMode.Miuix -> OverlayDialog(show = true, onDismissRequest = onDismiss) {
-            MiuixText(text = message, modifier = Modifier.fillMaxWidth())
-            MiuixTextButton(
-                text = confirmText,
-                onClick = onConfirm,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-            MiuixTextButton(
-                text = stringResource(R.string.launcher_backup_cancel),
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
         UiMode.Material -> AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(title) },
-            text = { Text(message) },
+            text = {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = dialogBodyMaxHeight(chrome = 160.dp))
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(message)
+                }
+            },
             confirmButton = { TextButton(onClick = onConfirm) { Text(confirmText) } },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.launcher_backup_cancel))
                 }
             },
+        )
+        // COUI 线：确认是主操作，Primary 样式必须显式给配色；取消放取消位，不占中性位
+        UiMode.Coui -> CouiAlertDialog(
+            onDismissRequest = onDismiss,
+            title = title,
+            message = message,
+            confirmAction = CouiDialogAction(
+                text = confirmText,
+                onClick = onConfirm,
+                style = CouiDialogActionStyle.Primary,
+                colors = CouiDialogDefaults.primaryActionColors(CouiTheme.colorScheme.accent),
+            ),
+            dismissAction = CouiDialogAction(
+                text = stringResource(R.string.launcher_backup_cancel),
+                onClick = onDismiss,
+            ),
         )
     }
 }

@@ -22,8 +22,7 @@ import androidx.core.net.toUri
 import com.highcapable.betterandroid.ui.extension.view.toast
 import com.highcapable.kavaref.KavaRef.Companion.asResolver
 import com.highcapable.kavaref.KavaRef.Companion.resolve
-import com.highcapable.kavaref.extension.classOf
-import com.highcapable.kavaref.extension.isStatic
+import com.highcapable.kavaref.condition.type.Modifiers
 import com.highcapable.kavaref.extension.isSubclassOf
 import com.highcapable.kavaref.resolver.MethodResolver
 import com.highcapable.yukihookapi.extension.kavaref.hook
@@ -151,7 +150,7 @@ object LauncherBackupHooker : YukiBaseHooker() {
      * 为什么不能像以前那样「hostApplication 为空就直接 return」：onHook 常常早于 Application#onCreate
      * 执行（模块在 app_process 阶段装载，Application 还没创建），此时 hostApplication 还是空，
      * 一旦直接返回，指令通道就再也不会注册 —— 重启后点备份必然等到超时的直接原因。
-     * 所以这里先等 hostApplication，等不到就短间隔重试；App 实例真正的来源是挂载点
+     * 所以这里先等 hostApplication，等不到就短间隔重试；真正的 App 实例由挂载点
      * [installProcessStartMountPoint]：桌面 Application#onCreate 里拿到的就是 Application 自己，
      * 不再自己反射 ActivityThread.currentApplication()。
      */
@@ -221,6 +220,11 @@ object LauncherBackupHooker : YukiBaseHooker() {
     // ---------------- 指令分发 ----------------
 
     private fun handleCommand(raw: String?) {
+        //总开关刚关掉、桌面进程还没重启时通道仍然在：指令在这里丢弃，不要半途执行
+        if (!masterEnabled()) {
+            LogUtils.d(TAG, "handleCommand", "总开关已关闭，忽略指令: $raw")
+            return
+        }
         val command = LauncherBackupUtils.parseCommand(raw)
         if (command == null) {
             LogUtils.d(TAG, "handleCommand", "忽略非法指令: $raw")
@@ -291,6 +295,7 @@ object LauncherBackupHooker : YukiBaseHooker() {
         if (mountInstalled) return
         mountInstalled = true
         runCatching {
+            //Source LauncherApplication
             "com.android.common.LauncherApplication".toClass().resolve()
                 .firstMethodOrNull { name = "onCreate"; emptyParameters() } ?: error("no onCreate")
         }.onSuccess { method ->
@@ -435,8 +440,13 @@ object LauncherBackupHooker : YukiBaseHooker() {
         )
     }
 
-    /** 自动备份开关；重试链路里每一跳都要重新确认，用户可能在等待期间把它关掉 */
-    private fun autoBackupEnabled(): Boolean = runCatching {
+    /** 功能总开关；装载在桌面进程启动时判定，这里是用户在运行期关掉后的兜底闸门 */
+    private fun masterEnabled(): Boolean = runCatching {
+        preferences(ModulePrefs).getBoolean(LauncherBackupPrefs.KEY_ENABLED, false)
+    }.getOrDefault(false)
+
+    /** 自动备份开关：总开关与自动开关都开着才算；重试链路里每一跳都要重新确认，用户可能在等待期间把它关掉 */
+    private fun autoBackupEnabled(): Boolean = masterEnabled() && runCatching {
         preferences(ModulePrefs).getBoolean(LauncherBackupPrefs.KEY_AUTO_ENABLED, false)
     }.getOrDefault(false)
 
@@ -945,15 +955,16 @@ object LauncherBackupHooker : YukiBaseHooker() {
      */
     private fun protectedAppsManager(context: Context): Any? = runCatching {
         val managerClass = DEEP_PROTECTED_MANAGER.toClass(launcherClassLoader())
-        val accessor = managerClass.declaredMethods.firstOrNull { method ->
-            method.isStatic &&
-                method.parameterTypes.contentEquals(arrayOf(classOf<Context>())) &&
-                method.returnType isSubclassOf managerClass
+        val accessor = managerClass.resolve().firstMethodOrNull {
+            modifiers(Modifiers.STATIC)
+            parameters(Context::class)
+            returnType { it isSubclassOf managerClass }
         }
-        if (accessor != null) return@runCatching accessor.invoke(null, context)
-        managerClass.declaredFields.firstOrNull { field ->
-            field.isStatic && field.type isSubclassOf managerClass
-        }?.get(null)
+        if (accessor != null) return@runCatching accessor.invoke(context)
+        managerClass.resolve().firstFieldOrNull {
+            modifiers(Modifiers.STATIC)
+            type { it isSubclassOf managerClass }
+        }?.get()
     }.getOrNull()
 
     /**
@@ -1030,15 +1041,19 @@ object LauncherBackupHooker : YukiBaseHooker() {
         }
     }
 
-    /** 当前桌面模式（Standard 0 / Drawer 2 / Simple 3）；取不到返回 null */
-    private fun currentLauncherMode(): Int? = runCatching {
-        LAUNCHER_MODE_MANAGER.toClass(launcherClassLoader()).resolve()
-            .firstMethodOrNull { name = "getInstance"; emptyParameters() }?.invoke()?.asResolver()
-            ?.firstMethodOrNull { name = "getCurType"; superclass() }
-            ?.invoke() as? Int
-    }.getOrElse {
-        YLog.debug("$TAG 读取 launcher_mode 失败", it)
-        null
+    /**
+     * 当前桌面模式（Standard 0 / Drawer 2 / Simple 3）；取不到返回 null。
+     *
+     * 模式由 launcher 自己持久化在 [LAUNCHER_PREFS_NAME] 的 [LAUNCHER_MODE_KEY] 键上，切模式时由桌面写回，
+     * 所以直接读 prefs 即可，不必再反射读取类：负责读它的 LauncherModeManager 在新版 launcher 里已被移除，
+     * 按类名解析会一直 ClassNotFoundException。
+     */
+    private fun currentLauncherMode(): Int? {
+        val context = hostContext ?: return null
+        return runCatching {
+            context.getSharedPreferences(LAUNCHER_PREFS_NAME, Context.MODE_PRIVATE)
+                .getInt(LAUNCHER_MODE_KEY, -1)
+        }.getOrNull()?.takeIf { it >= 0 }
     }
 
     /** 宿主（launcher）的类加载器：YukiHookAPI 提供 hostClassLoader（appClassLoader 已废弃）；兜底用 hook 类自己的 */
@@ -1050,7 +1065,8 @@ object LauncherBackupHooker : YukiBaseHooker() {
     private const val DEEP_PROTECTED_MANAGER =
         "com.android.launcher.filter.DeepProtectedAppsManager"
     private const val LAUNCHER_APP_STATE = "com.android.launcher3.LauncherAppState"
-    private const val LAUNCHER_MODE_MANAGER = "com.android.launcher.mode.LauncherModeManager"
+    private const val LAUNCHER_PREFS_NAME = "com.android.launcher_unique_shared_prefs"
+    private const val LAUNCHER_MODE_KEY = "launcher_mode"
 
     /**
      * 单表写回：DELETE 全表后按备份行逐条 INSERT。

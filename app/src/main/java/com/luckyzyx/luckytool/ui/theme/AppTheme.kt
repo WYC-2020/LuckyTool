@@ -27,7 +27,6 @@ import com.luckyzyx.luckytool.ui.shell.LocalFloatingBottomBarStyle
 import com.luckyzyx.luckytool.ui.shell.LocalCategoryBadgeColors
 import com.luckyzyx.luckytool.ui.shell.LocalEnableNavigationBadge
 import com.luckyzyx.luckytool.ui.shell.LocalEnableSwipeDismiss
-import com.luckyzyx.luckytool.ui.shell.LocalModuleDescriptionMaxLines
 import com.luckyzyx.luckytool.ui.shell.LocalPagerInterceptionMode
 import com.luckyzyx.luckytool.ui.shell.ShellSettingsController
 
@@ -74,7 +73,7 @@ fun ColorMode.resolveDarkTheme(): Boolean = when {
  * - 主题切换时全色板弹性动画过渡，并同步系统栏前景色。
  */
 @Composable
-fun MaterialLuckyTheme(
+fun MaterialAppTheme(
     appSettings: AppSettings,
     content: @Composable () -> Unit,
 ) {
@@ -82,7 +81,7 @@ fun MaterialLuckyTheme(
     val darkTheme = colorMode.resolveDarkTheme()
     val seedColor = rememberSeedColor(appSettings = appSettings, isDark = darkTheme)
 
-    val colorScheme = rememberLuckyColorScheme(
+    val colorScheme = rememberAppColorScheme(
         seedColor = seedColor,
         isDark = darkTheme,
         isAmoled = colorMode.isAmoled,
@@ -96,14 +95,14 @@ fun MaterialLuckyTheme(
     // 模式与色板下发到组合树，供子组件读取。
     CompositionLocalProvider(
         LocalColorMode provides colorMode,
-        LocalLuckyColorScheme provides animatedColorScheme,
+        LocalAppColorScheme provides animatedColorScheme,
     ) {
         // material3 1.5.0-alpha29：Expressive 公开入口（1.4.0 稳定版中该 API 为 internal 不可用）
         MaterialExpressiveTheme(
             colorScheme = animatedColorScheme,
             motionScheme = MotionScheme.expressive(),
         ) {
-            // 与 Miuix 线同理：material3 只有在 Surface / Scaffold / TopAppBar / Button 这些组件里
+            // material3 只有在 Surface / Scaffold / TopAppBar / Button 这些组件里
             // 才下发 LocalContentColor，未被它们包裹的内容（自绘弹层、对话框、顶栏 actions 等）
             // 会退回 material3 默认的黑，深色模式下不可见。这里在主题根部兜底一份 onBackground。
             CompositionLocalProvider(
@@ -115,10 +114,13 @@ fun MaterialLuckyTheme(
 }
 
 /**
- * 主题分发：按 [uiMode] 选择 Miuix 或 Material 外观线。
+ * 主题分发：按 [uiMode] 选择 COUI 或 Material 外观线。
+ *
+ * [UiMode.Coui] 只在 Android 14+ 可用；调用方传入的值应已通过 [UiMode.coerceAvailable] 归一，
+ * 这里仍按同一规则兜底一次，避免低版本设备组合出 COUI 主题。
  */
 @Composable
-fun LuckyTheme(
+fun AppTheme(
     appSettings: AppSettings,
     uiMode: UiMode = LocalUiMode.current,
     content: @Composable () -> Unit,
@@ -129,9 +131,9 @@ fun LuckyTheme(
     // content 通过 rememberUpdatedState 间接化，避免把首次组合的 lambda 实例永久固化。
     val currentContent = rememberUpdatedState(content)
     val movableContent = remember { movableContentOf { currentContent.value() } }
-    when (uiMode) {
-        UiMode.Miuix -> MiuixLuckyTheme(appSettings = appSettings, content = movableContent)
-        UiMode.Material -> MaterialLuckyTheme(appSettings = appSettings, content = movableContent)
+    when (uiMode.coerceAvailable()) {
+        UiMode.Coui -> CouiAppTheme(appSettings = appSettings, content = movableContent)
+        UiMode.Material -> MaterialAppTheme(appSettings = appSettings, content = movableContent)
     }
 }
 
@@ -150,9 +152,9 @@ internal fun themeWindowAppearance(darkTheme: Boolean) {
 }
 
 /**
- * 跟随应用偏好的 LuckyTheme 入口：主题（dark_theme / use_dynamic_color / key_color /
+ * 跟随应用偏好的 AppTheme 入口：主题（dark_theme / use_dynamic_color / key_color /
  * palette_style / color_spec）与外壳行为（ShellSettings）。
- * Compose 界面的统一入口：P1 试点 ComposeView、P2 主壳 setContent 均包一层 LuckyAppTheme。
+ * Compose 界面的统一入口：P1 试点 ComposeView、P2 主壳 setContent 均包一层 AppTheme。
  *
  * 主题页（ThemeScreen）写入偏好后会调用 [ThemePrefs.notifyChanged]，revision 自增即重读设置，
  * 全应用配色与外壳行为均无需 recreate Activity 即时生效；明暗模式另外要经
@@ -162,7 +164,7 @@ internal fun themeWindowAppearance(darkTheme: Boolean) {
  * 界面缩放（page_scale）：覆盖 [LocalDensity]，只缩放 density，fontScale 原样透传。
  */
 @Composable
-fun LuckyAppTheme(content: @Composable () -> Unit) {
+fun AppTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     // revision 变化表示主题页刚写入偏好：重新读取设置即可即时生效
     val revision = ThemePrefs.revision
@@ -184,14 +186,13 @@ fun LuckyAppTheme(content: @Composable () -> Unit) {
         LocalFloatingBottomBarStyle provides shellSettings.floatingBottomBarStyle,
         LocalEnableSwipeDismiss provides shellSettings.swipeDismiss,
         LocalPagerInterceptionMode provides shellSettings.pagerInterceptionMode,
-        LocalModuleDescriptionMaxLines provides shellSettings.moduleDescriptionMaxLines,
         LocalCategoryBadgeColors provides shellSettings.categoryBadgeColors,
     ) {
-        LuckyTheme(appSettings = appSettings, uiMode = uiMode, content = content)
+        AppTheme(appSettings = appSettings, uiMode = uiMode, content = content)
     }
 }
 
 /** 当前色板（主题预览卡片等需要显式拿到色板的场景使用） */
-val LocalLuckyColorScheme = androidx.compose.runtime.staticCompositionLocalOf<ColorScheme> {
-    error("LocalLuckyColorScheme not provided")
+val LocalAppColorScheme = androidx.compose.runtime.staticCompositionLocalOf<ColorScheme> {
+    error("LocalAppColorScheme not provided")
 }

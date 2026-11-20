@@ -25,6 +25,8 @@ import com.luckyzyx.luckytool.ui.compose.components.PrefIndexItem
 import com.luckyzyx.luckytool.ui.compose.components.PrefScopeBuilder
 import com.luckyzyx.luckytool.ui.compose.components.ScopeScreen
 import com.luckyzyx.luckytool.ui.compose.components.ScrollTarget
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiPullToRefreshBox
+import com.luckyzyx.luckytool.ui.compose.components.LocalTopBarCollapsedFraction
 import com.luckyzyx.luckytool.ui.compose.scopes.apps.OplusAlarmClockPage
 import com.luckyzyx.luckytool.ui.compose.scopes.apps.OplusBatteryPage
 import com.luckyzyx.luckytool.ui.compose.scopes.apps.OplusBeaconLinkPage
@@ -75,6 +77,7 @@ import com.luckyzyx.luckytool.ui.compose.scopes.related.ApplicationRelatedPage
 import com.luckyzyx.luckytool.ui.compose.scopes.related.CorePatchPage
 import com.luckyzyx.luckytool.ui.compose.scopes.related.DialogRelatedPage
 import com.luckyzyx.luckytool.ui.compose.scopes.related.FingerPrintRelatedPage
+import com.luckyzyx.luckytool.ui.compose.scopes.related.FloatingWindowRelatedPage
 import com.luckyzyx.luckytool.ui.compose.scopes.related.LauncherBackupPage
 import com.luckyzyx.luckytool.ui.compose.scopes.related.LauncherRelatedPage
 import com.luckyzyx.luckytool.ui.compose.scopes.related.LockScreenRelatedPage
@@ -138,14 +141,13 @@ class ScopePageAction(
  * @param packName       宿主包名（sendPrefsValue 通知目标）
  * @param displayPackName 功能树标题/图标来源包名（默认 = packName；通知目标与显示 App 不同时单独指定）
  * @param scopes         Xposed 作用域包名列表（重启作用域对话框用）
- * @param restartEnabled 是否显示"重启作用域"菜单
+ * @param restartEnabled 是否显示"重启作用域"菜单（默认显示；仅没有可重启作用域的页面显式关闭）
  * @param isVisible      页面级可见性：false 时功能树、搜索与子页入口均不出现此页
  * @param onRefresh      下拉刷新回调（null = 无下拉刷新；如 OTA 提取、捐赠数据页）
  * @param content        页面内容 DSL（每次重组重跑，条件可见性写 Kotlin if）
- * @param contentMiuix   页面自带的 Miuix 呈现（null = 走共享渲染层 [ScopeScreen]）
- * @param contentMaterial 页面自带的 material 呈现（null = 走共享渲染层 [ScopeScreen]）
+ * @param contentMaterial 页面自带的整页呈现（null = 走共享渲染层 [ScopeScreen]）
  *
- * 页面需要自带主题布局时，提供一个或两个**槽位**（[contentMiuix] / [contentMaterial]）：
+ * 页面需要自带主题布局时，提供**槽位** [contentMaterial]：
  * 槽位非空时由页面自有布局渲染整页内容（见 [ScopePageContent]），共享层只负责状态、动作与搜索跳转。
  * 行清单仍只写一份 —— 放在 [content] 里；槽位布局遍历已构建好的 `builder.entries` 渲染
  * （共享层已跑过 [content]，**不要**在槽位里再 `apply` 一次，否则条目翻倍）。
@@ -161,7 +163,7 @@ class ScopePageSpec(
      */
     val displayPackName: String? = null,
     val scopes: Array<String>,
-    val restartEnabled: Boolean,
+    val restartEnabled: Boolean = true,
     /**
      * 页面级可见性：
      * false 时功能树、搜索与子页入口均不出现此页；默认恒可见。
@@ -180,7 +182,6 @@ class ScopePageSpec(
      * 图标按钮，其余收进顶栏溢出菜单。动作处理函数由页面在组合期登记到 [actionHandler]。
      */
     val topActions: List<ScopePageAction> = emptyList(),
-    val contentMiuix: (@Composable ScopeContentScope.(PrefScopeBuilder) -> Unit)? = null,
     val contentMaterial: (@Composable ScopeContentScope.(PrefScopeBuilder) -> Unit)? = null,
     /**
      * 共享行声明。72 个既有页面用尾随 lambda 传入，因此**必须保持最后一个参数**；
@@ -196,9 +197,9 @@ class ScopePageSpec(
 }
 
 /**
- * 页面级内容作用域（中性）：页面自带布局（[ScopePageSpec.contentMiuix] / [ScopePageSpec.contentMaterial]）
- * 通过它拿到只读能力与动作入口，**不含任何 material/miuix 主题类型** —— 页面代码只依赖本接口与
- * [PrefScopeBuilder] 公共 API，因此同一套页面逻辑可以在两条主题线上复用。
+ * 页面级内容作用域（中性）：页面自带布局（[ScopePageSpec.contentMaterial]）
+ * 通过它拿到只读能力与动作入口，**不含任何具体主题类型** —— 页面代码只依赖本接口与
+ * [PrefScopeBuilder] 公共 API。
  */
 interface ScopeContentScope {
     /** 宿主应用 Context（与共享层注入 [PrefScopeBuilder] 的同一个 applicationContext） */
@@ -249,25 +250,19 @@ private class ScopeContentScopeImpl(
     }
 }
 
-/** material 线页面作用域实现（对外签名与 [MiuixScopeContentScope] 逐字一致，行为委托同一实现体）。 */
+/** 页面作用域实现：对页面隐藏宿主内部实现，只暴露约定的成员。 */
 internal class MaterialScopeContentScope(delegate: ScopeContentScope) :
     ScopeContentScope by delegate
-
-/** miuix 线页面作用域实现（对外签名与 [MaterialScopeContentScope] 逐字一致，行为委托同一实现体）。 */
-internal class MiuixScopeContentScope(delegate: ScopeContentScope) : ScopeContentScope by delegate
 
 /**
  * 页面内容的中性宿主与**唯一分派点**（[ScopeScreen] 的调用处）。
  *
- * - 页面为当前主题线提供了槽位（Miuix → [ScopePageSpec.contentMiuix]，Material → [ScopePageSpec.contentMaterial]）
- *   时，整页内容由页面自有布局渲染；共享层只做与 [ScopeScreen] 同语义的三件事：订阅 revision、构建
- *   [PrefScopeBuilder]（行声明与条件可见性只写一份）、执行搜索跳转/高亮，并沿用下拉刷新包装。
- *   页面布局若要让内容在模糊顶栏下滚动，把 Miuix 线的 `LocalScopeTopInset` 用作自己
- *   LazyColumn 的 `contentPadding.top`，并把 [ScopeContentScope.listState] 交给该 LazyColumn。
+ * - 页面自带布局（[ScopePageSpec.contentMaterial]）时，整页内容由页面自有布局渲染；共享层只做与
+ *   [ScopeScreen] 同语义的三件事：订阅 revision、构建 [PrefScopeBuilder]（行声明与条件可见性只写一份）、
+ *   执行搜索跳转/高亮，并沿用下拉刷新包装。
  * - 未提供槽位时（72 个既有页面），逐字回落到今天的 [ScopeScreen] 路径。
  *
- * [modifier] 由调用方的页面骨架给出：Miuix 线保留 start/end/bottom 外置 padding（top 归 0，顶栏高度经
- * `LocalScopeTopInset` 交给列表充当 `contentPadding.top`），material 线是骨架的整块 innerPadding。
+ * [modifier] 由调用方的页面骨架给出，是骨架算好的整块 innerPadding。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -279,10 +274,7 @@ internal fun ScopePageContent(
     scrollTarget: ScrollTarget? = null,
     onNavigate: ((target: String, title: String?) -> Unit)? = null,
 ) {
-    val contentSlot = when (LocalUiMode.current) {
-        UiMode.Miuix -> spec.contentMiuix
-        UiMode.Material -> spec.contentMaterial
-    }
+    val contentSlot = spec.contentMaterial
     if (contentSlot == null) {
         // 未提供槽位：与今天逐字一致的共享渲染层路径
         ScopeScreen(
@@ -336,10 +328,7 @@ internal fun ScopePageContent(
         onNavigate = onNavigate,
         onRefresh = spec.onRefresh,
     )
-    val scope: ScopeContentScope = when (LocalUiMode.current) {
-        UiMode.Miuix -> MiuixScopeContentScope(scopeImpl)
-        UiMode.Material -> MaterialScopeContentScope(scopeImpl)
-    }
+    val scope: ScopeContentScope = MaterialScopeContentScope(scopeImpl)
 
     val page: @Composable (Modifier) -> Unit = { pageModifier ->
         Box(pageModifier) { contentSlot(scope, builder) }
@@ -348,21 +337,34 @@ internal fun ScopePageContent(
     if (onRefresh != null) {
         var refreshing by remember { mutableStateOf(false) }
         val refreshScope = rememberCoroutineScope()
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = {
-                refreshScope.launch {
-                    refreshing = true
-                    try {
-                        onRefresh()
-                    } finally {
-                        refreshing = false
-                    }
+        val refresh: () -> Unit = {
+            refreshScope.launch {
+                refreshing = true
+                try {
+                    onRefresh()
+                } finally {
+                    refreshing = false
                 }
-            },
-            modifier = modifier,
-        ) {
-            page(Modifier.fillMaxSize())
+            }
+        }
+        // 下拉刷新按外观分派：COUI 用自己的指示器与嵌套滚动实现，Material 仍用 M3 的容器。
+        // 两条线都包同一份页面内容，刷新回调与修饰符完全一致。
+        when (LocalUiMode.current) {
+            UiMode.Material -> PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = refresh,
+                modifier = modifier,
+                enabled = LocalTopBarCollapsedFraction.current <= 0f,
+            ) {
+                page(Modifier.fillMaxSize())
+            }
+            UiMode.Coui -> CouiPullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = refresh,
+                modifier = modifier,
+            ) {
+                page(Modifier.fillMaxSize())
+            }
         }
     } else {
         page(modifier)
@@ -450,6 +452,7 @@ object ScopePageRegistry {
         "android_related",
         "statusbar",
         "launcher",
+        "floating_window",
         "aod",
         "lock_screen",
         "application",
@@ -509,6 +512,7 @@ object ScopePageRegistry {
         "statusbar" to R.string.StatusBar,
         "launcher" to R.string.Desktop,
         "launcher_backup" to R.string.launcher_backup,
+        "floating_window" to R.string.FloatingWindow,
         "aod" to R.string.AodRelated,
         "lock_screen" to R.string.LockScreen,
         "application" to R.string.Application,
@@ -571,6 +575,7 @@ object ScopePageRegistry {
         "androidRelated" to "android_related",
         "launcher" to "launcher",
         "launcherBackup" to "launcher_backup",
+        "floatingWindow" to "floating_window",
         "lockScreen" to "lock_screen",
         "application" to "application",
         "miscellaneous" to "miscellaneous",
@@ -658,6 +663,7 @@ object ScopePageRegistry {
         register(CorePatchPage.spec)
         register(DialogRelatedPage.spec)
         register(FingerPrintRelatedPage.spec)
+        register(FloatingWindowRelatedPage.spec)
         register(LauncherRelatedPage.spec)
         register(LauncherBackupPage.spec)
         register(LockScreenRelatedPage.spec)

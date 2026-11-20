@@ -9,7 +9,6 @@ import com.luckyzyx.luckytool.hook.scopes.launcher.DisableLongPressAppIconSecond
 import com.luckyzyx.luckytool.hook.scopes.launcher.EnableAutoCloseFolder
 import com.luckyzyx.luckytool.hook.scopes.launcher.EnableDockerBackground
 import com.luckyzyx.luckytool.hook.scopes.launcher.EnableLauncherIndicatorEntry
-import com.luckyzyx.luckytool.hook.scopes.launcher.ForceEnableDockerBackgroundBlur
 import com.luckyzyx.luckytool.hook.scopes.launcher.ForceEnableRecentTaskMemoryDisplay
 import com.luckyzyx.luckytool.hook.scopes.launcher.HookAppBadge
 import com.luckyzyx.luckytool.hook.scopes.launcher.HookDeviceProfileOption
@@ -30,6 +29,7 @@ import com.luckyzyx.luckytool.hook.scopes.launcher.RemoveWidgetsAddRequestWhitel
 import com.luckyzyx.luckytool.hook.scopes.launcher.UnlockTaskLocks
 import com.luckyzyx.luckytool.utils.A13
 import com.luckyzyx.luckytool.utils.DexkitUtils
+import com.luckyzyx.luckytool.utils.LauncherBackupPrefs
 import com.luckyzyx.luckytool.utils.ModulePrefs
 import com.luckyzyx.luckytool.utils.SDK
 import com.luckyzyx.luckytool.utils.getOSVersionCode
@@ -62,10 +62,18 @@ object HookLauncher : YukiBaseHooker() {
                 loadHooker(UnlockTaskLocks(dexKitBridge))
             }
 
+            //允许锁定或解锁已排除活动（C17 起 AppLock 类名与方法名都被混淆，需要 DexKit 按签名定位）
+            if (preferences(ModulePrefs).getBoolean("allow_locking_unlocking_of_excluded_activity", false)) {
+                loadHooker(AllowLockingUnLockingOfExcludedActivity(dexKitBridge))
+            }
+
             //设置桌面布局行列数
             if (preferences(ModulePrefs).getBoolean("launcher_layout_enable", false)) {
                 loadHooker(LauncherLayoutRowColume(dexKitBridge))
             }
+
+            //桌面图标相关（图标尺寸在 17.x 需要 DexKit 定位混淆后的类）
+            loadHooker(HookOplusBubbleTextView(dexKitBridge))
         }
 
         //HookLauncherFeatureFlags
@@ -79,9 +87,6 @@ object HookLauncher : YukiBaseHooker() {
 
         //堆叠布局
 //        loadHooker(StackedTaskLayout)
-
-        //桌面图标相关
-        loadHooker(HookOplusBubbleTextView)
 
 
         //移除文件夹名称输入限制
@@ -104,17 +109,11 @@ object HookLauncher : YukiBaseHooker() {
         if (preferences(ModulePrefs).getBoolean("remove_bottom_app_icon_of_recent_task_list", false)) {
             loadHooker(RemoveBottomAppIconOfRecentTaskList)
         }
-        //启用Docker背景显示
-        if (preferences(ModulePrefs).getBoolean("enable_docker_background", false)) {
+        //启用Docker背景显示 / 强制启用Docker背景模糊（各开关只装自己需要的 hook，模糊没有背景可模糊时由这里补建）
+        if (preferences(ModulePrefs).getBoolean("enable_docker_background", false) ||
+            preferences(ModulePrefs).getBoolean("force_enable_docker_background_blur", false)
+        ) {
             if (osCode >= 26) loadHooker(EnableDockerBackground)
-        }
-        //强制启用Docker背景模糊
-        if (preferences(ModulePrefs).getBoolean("force_enable_docker_background_blur", false)) {
-            if (osCode >= 37) loadHooker(ForceEnableDockerBackgroundBlur)
-        }
-        //允许锁定或解锁已排除活动
-        if (preferences(ModulePrefs).getBoolean("allow_locking_unlocking_of_excluded_activity", false)) {
-            loadHooker(AllowLockingUnLockingOfExcludedActivity)
         }
         //移除App更新圆点
         if (osCode >= 33) loadHooker(RemoveAppUpdateGreenDot)
@@ -137,8 +136,10 @@ object HookLauncher : YukiBaseHooker() {
         }
         //自定义桌面默认主页
         loadHooker(CustomDesktopDefaultHomePage)
-        //桌面布局备份/恢复（无开关：指令通道常驻，未使用时不做任何事）
-        loadHooker(LauncherBackupHooker)
+        //桌面布局备份/恢复：总开关关闭就不装载（指令通道随之不存在）
+        if (preferences(ModulePrefs).getBoolean(LauncherBackupPrefs.KEY_ENABLED, false)) {
+            loadHooker(LauncherBackupHooker)
+        }
         //启用桌面下方按钮选择项
         if (preferences(ModulePrefs).getBoolean("enable_launcher_indicator_entry", false)) {
             if (osCode >= 37) loadHooker(EnableLauncherIndicatorEntry)

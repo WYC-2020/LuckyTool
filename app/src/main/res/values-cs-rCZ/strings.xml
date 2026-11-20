@@ -6,7 +6,7 @@
     <string name="nav_function">Funkce</string>
     <string name="nav_home">Domovská stránka</string>
     <string name="nav_other">Ostatní</string>
-    <string name="nav_log">Protokoly</string>
+    <string name="nav_search">Hledat</string>
     <string name="nav_setting">Nastavení</string>
     <string name="fragment_source">Zdrojový kód</string>
     <!-- Settings -->
@@ -75,7 +75,7 @@
     <string name="participate_translation_summary">Přejděte na Github a přispějte svým překladem</string>
     <!-- check lsposed -->
     <string name="system_not_support">Aktuální systém není podporován!</string>
-    <string name="unsupported_xposed">Modul nebyl aktivován.\nProsím použijte LSPosed framework pro aktivaci po aktivaci!</string>
+    <string name="unsupported_xposed">Prosím aktivujte modul v LSPosed a zkuste to znovu!</string>
     <string name="unsupported_os">Nepodporovaný systém</string>
     <string name="unsupported_os_summary">Protože modul podporuje pouze ColorOS 12 a novější, nezapomeňte přijmout bezpečnostní opatření!</string>
     <string name="no_root">Nemáte oprávnění root</string>
@@ -99,6 +99,8 @@
     <string name="restart_only_this_page_scope">Restartovat pouze tento scope</string>
     <string name="reboot">Restartovat systém</string>
     <string name="fast_reboot">Rychlý reboot</string>
+    <string name="reboot_message">Restartovat systém?\nZařízení se okamžitě restartuje a neuložená data se ztratí.</string>
+    <string name="fast_reboot_message">Rychlý restart?\nVšechny aplikace se zavřou a systém se restartuje bez vypnutí.</string>
     <string name="menu_versioninfo">Informace o verzi</string>
     <string name="scope_version_info">Informace o verzi rozsahu</string>
     <string name="show_system_app">Zobrazit systémové aplikace</string>
@@ -112,6 +114,8 @@
     <string name="replace_system_root_state_detection">Nahradit systémové detekci rootu</string>
     <string name="allow_untrusted_touch">Povolit nedůvěryhodné dotyky</string>
     <string name="allow_untrusted_touch_summary">Vyřešte problém, že některá okna nebo stránky jsou blokovány a nelze s nimi interagovat dotykem</string>
+    <string name="usb_debugging_auto_authorize">Automatické povolení ladění USB</string>
+    <string name="usb_debugging_auto_authorize_summary">Zapněte ladění USB v možnostech pro vývojáře</string>
     <string name="customized_gaussian_blur_effect_level">Přizpůsobená úroveň gaussovského rozostření</string>
     <string name="disable_temperature_control_listener">Zakázat naslouchání řízení teploty</string>
     <string name="set_ltpo_refresh_rate_mode">Nastavit režim obnovovací frekvence LTPO</string>
@@ -559,8 +563,6 @@
     <string name="SoundRelated">Související se zvukem</string>
     <string name="media_volume_level">Úroveň hlasitosti médií</string>
     <string name="media_volume_level_summary">Nastavte na 0 pro vypnutí této funkce, restartujte systém, aby se změny projevily</string>
-    <string name="enable_super_volume_mode">Povolit režim superhlasitosti</string>
-    <string name="enable_super_volume_mode_for_calls">Povolit režim superhlasitosti pro hovory</string>
     <string name="minimum_volume_level_can_be_zero">Minimální úroveň hlasitosti může být nula</string>
     <string name="enable_app_specific_media_volume">Povolit hlasitost pro každou aplikaci zvlášť</string>
     <string name="enable_app_specific_media_volume_summary">Tato funkce vyžaduje podporu systému, aby fungovala</string>
@@ -766,10 +768,6 @@
     <string name="Screenshot">Snímky obrazovky</string>
     <string name="remove_system_screenshot_delay">Odstranit zpoždění snímku systémové obrazovky</string>
     <string name="remove_system_screenshot_delay_summary">První snímek obrazovky se nemusí zaznamenat</string>
-    <string name="remove_screenshot_privacy_limit">Odstranit limit ochrany osobních údajů na snímku obrazovky</string>
-    <string name="remove_screenshot_privacy_limit_summary">Odstranit omezení ochrany osobních údajů, která nelze zachytit. Pokud se toto neprojeví, zakažte FLAG_SECURE</string>
-    <string name="disable_flag_secure">Zakázat FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">Vyřešit většinu problémů aplikací s nahráváním, sdílením obrazovky nebo limity nahrávání\nVyžaduje LSPosed 1.8.6.+</string>
     <string name="remove_page_limit_for_long_screenshots">Odstranit limit stránek pro dlouhé snímky obrazovky</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Jsou podporovány pouze některé scénáře, prosím vyzkoušejte specifickou situaci sami</string>
     <string name="enable_png_save_format">Povolit PNG formát ukládání</string>

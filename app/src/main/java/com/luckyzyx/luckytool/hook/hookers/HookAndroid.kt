@@ -29,6 +29,7 @@ import com.luckyzyx.luckytool.hook.scopes.android.HookWindowManagerService
 import com.luckyzyx.luckytool.hook.scopes.android.LTPODynamicRefreshRate
 import com.luckyzyx.luckytool.hook.scopes.android.MediaVolumeLevel
 import com.luckyzyx.luckytool.hook.scopes.android.MultiAppConfig
+import com.luckyzyx.luckytool.hook.scopes.android.PanoramaWorkStation
 import com.luckyzyx.luckytool.hook.scopes.android.RemoveAccessDeviceLogDialog
 import com.luckyzyx.luckytool.hook.scopes.android.RemoveAlwaysAllowAppStartList
 import com.luckyzyx.luckytool.hook.scopes.android.RemoveAppUninstallButtonBlackList
@@ -39,6 +40,7 @@ import com.luckyzyx.luckytool.hook.scopes.android.ReplaceSystemRootStateDetectio
 import com.luckyzyx.luckytool.hook.scopes.android.ScrollToTopWhiteList
 import com.luckyzyx.luckytool.hook.scopes.android.SetAppUpdateDotDisplayMode
 import com.luckyzyx.luckytool.hook.scopes.android.SystemEnableVolumeKeyControlFlashlight
+import com.luckyzyx.luckytool.hook.scopes.android.UsbDebuggingAutoAuthorize
 import com.luckyzyx.luckytool.hook.scopes.android.ZoomWindowConfig
 import com.luckyzyx.luckytool.utils.A13
 import com.luckyzyx.luckytool.utils.ModulePrefs
@@ -84,6 +86,9 @@ object HookAndroid : YukiBaseHooker() {
         //USB安装确认
         loadHooker(ADBInstallConfirm)
 
+        //USB调试自动授权
+        loadHooker(UsbDebuggingAutoAuthorize)
+
         //移除72小时密码验证
         loadHooker(RemovePasswordTimeoutVerification)
 
@@ -98,6 +103,11 @@ object HookAndroid : YukiBaseHooker() {
 
         //浮窗
         loadHooker(ZoomWindowConfig())
+
+        //全景工作台（平板三分屏）
+        if (preferences(ModulePrefs).getBoolean("panorama_work_station", false)) {
+            loadHooker(PanoramaWorkStation)
+        }
 
         //暗色模式服务
         loadHooker(DarkModeService)
@@ -134,9 +144,6 @@ object HookAndroid : YukiBaseHooker() {
 
         //视频动态插帧
         loadHooker(EnableVideoMemcFrameInsertion)
-
-        //安全窗口标志
-//        loadHooker(OplusWindowSecureFlag)
 
         //App图标更新圆点
         if (osCode >= 33) loadHooker(SetAppUpdateDotDisplayMode)

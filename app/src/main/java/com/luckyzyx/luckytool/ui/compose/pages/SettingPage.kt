@@ -11,14 +11,11 @@ import android.provider.OpenableColumns
 import android.util.ArraySet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AdminPanelSettings
@@ -50,15 +47,20 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import com.itos.coui.dialog.CouiDialogAction
+import com.itos.coui.dialog.CouiDialogActionStyle
+import com.itos.coui.dialog.CouiDialogDefaults
+import com.itos.coui.theme.CouiTheme
 import com.luckyzyx.luckytool.R
 import com.luckyzyx.luckytool.ui.activity.MainActivity
 import com.luckyzyx.luckytool.ui.compose.components.ActionListDialog
 import com.luckyzyx.luckytool.ui.compose.components.ChoiceItem
+import com.luckyzyx.luckytool.ui.compose.components.ConfirmDialog
 import com.luckyzyx.luckytool.ui.compose.components.LocalScopeTopInset
 import com.luckyzyx.luckytool.ui.compose.components.ScopeScreen
 import com.luckyzyx.luckytool.ui.compose.components.PrefIcon
-import com.luckyzyx.luckytool.ui.compose.components.material.MaterialPageScaffold
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiAlertDialog
+import com.luckyzyx.luckytool.ui.compose.components.PageScaffold
 import com.luckyzyx.luckytool.ui.theme.LocalUiMode
 import com.luckyzyx.luckytool.ui.theme.ThemeController
 import com.luckyzyx.luckytool.ui.theme.ThemePrefs
@@ -90,11 +92,7 @@ import com.luckyzyx.luckytool.utils.recordedTarget
 import com.luckyzyx.luckytool.utils.showToast
 import org.json.JSONArray
 import org.json.JSONObject
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import kotlin.system.exitProcess
-import top.yukonga.miuix.kmp.basic.Text as MiuixText
-import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 
 /**
  * 设置页。
@@ -140,30 +138,26 @@ fun SettingPage(activity: MainActivity, onOpenTheme: () -> Unit = {}) {
     var showClearDialog by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
 
-    MaterialPageScaffold(
+    PageScaffold(
         title = stringResource(R.string.nav_setting),
     ) { padding ->
+        // 顶栏高度经 LocalScopeTopInset 放进列表 contentPadding：视口铺满整屏，
+        // 滚动中的行才能进入顶栏下方；水平/底部内边距仍留在视口外。
         val layoutDirection = LocalLayoutDirection.current
-        val uiMode = LocalUiMode.current
-        // 作用域内容列表自带 LazyColumn（不能再套 ExpressiveList）；Miuix 线只保留 start/end/bottom
-        // 外置 padding（top 归 0，顶栏高度经 LocalScopeTopInset 交给列表做 contentPadding.top）。
-        val scopeModifier = if (uiMode == UiMode.Miuix) {
-            Modifier
-                .fillMaxSize()
-                .padding(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = padding.calculateBottomPadding(),
-                )
-        } else {
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-        }
+        val scopeModifier = Modifier
+            .fillMaxSize()
+            .consumeWindowInsets(padding)
+            .padding(
+                start = padding.calculateStartPadding(layoutDirection),
+                end = padding.calculateEndPadding(layoutDirection),
+                bottom = padding.calculateBottomPadding(),
+            )
+        val topInset = padding.calculateTopPadding()
         val scopeContent: @Composable () -> Unit = {
             // 行参数在非 Composable 的构建 lambda 内求值（那里没有 Composer），字符串先在这里取一次
             val settingsUiModeTitle = stringResource(R.string.settings_ui_mode)
             val settingsUiModeSummary = stringResource(R.string.settings_ui_mode_summary)
+            val settingsUiModeCouiUnavailable = stringResource(R.string.settings_ui_mode_coui_unavailable)
             val themePaletteTitle = stringResource(R.string.theme_palette)
             val themePaletteSummary = stringResource(R.string.theme_palette_summary)
             val autoCheckUpdateTitle = stringResource(R.string.auto_check_update)
@@ -186,25 +180,41 @@ fun SettingPage(activity: MainActivity, onOpenTheme: () -> Unit = {}) {
                 stringResource(R.string.participate_translation_summary)
             val appPermissionTitle = stringResource(R.string.app_permission)
             val appPermissionSummary = stringResource(R.string.app_permission_summary)
-            ScopeScreen(
-                state = settings,
-                modifier = scopeModifier,
-            ) {
+            CompositionLocalProvider(LocalScopeTopInset provides topInset) {
+                ScopeScreen(
+                    state = settings,
+                    modifier = scopeModifier,
+                ) {
                 // ---------------- 主题 ----------------
                 // 主题模式 / 主题色 / 调色风格 / 色彩规格 / 动态取色 全部迁至独立主题页
                 group()
-                // 界面风格切换（Material / Miuix）：放在设置页而不是主题页，
-                // 保证切到 Miuix 后仍能在这里切回 Material。界面风格在上，主题入口在下。
+                // 界面风格切换（Material / COUI）：放在设置页而不是主题页，界面风格在上，主题入口在下。
+                // COUI 的顶栏 / 底栏 / 悬浮按钮依赖 API 34 的材质采样，低版本不给切换，
+                // 但仍保留一行禁用的说明，避免用户以为这条外观线不存在。
+                val couiAvailable = UiMode.Coui.isAvailable
+                val selectableUiModes = if (couiAvailable) {
+                    UiMode.entries
+                } else {
+                    UiMode.entries.filter { it != UiMode.Coui }
+                }
                 list(
                     key = ThemeController.KEY_UI_MODE,
                     title = settingsUiModeTitle,
-                    entries = UiMode.entries.map { it.name }.toTypedArray(),
-                    entryValues = UiMode.entries.map { it.value }.toTypedArray(),
+                    entries = selectableUiModes.map { it.name }.toTypedArray(),
+                    entryValues = selectableUiModes.map { it.value }.toTypedArray(),
                     default = UiMode.DEFAULT_VALUE,
                     summary = settingsUiModeSummary,
                     leading = { PrefIcon(Icons.Rounded.DisplaySettings) },
                     onChange = { ThemePrefs.notifyChanged() },
                 )
+                if (!couiAvailable) {
+                    click(
+                        title = "COUI",
+                        summary = settingsUiModeCouiUnavailable,
+                        enabled = false,
+                        leading = { PrefIcon(Icons.Rounded.DisplaySettings) },
+                    )
+                }
                 // 导航入口用箭头，不暴露内部色板名称。
                 click(
                     title = themePaletteTitle,
@@ -323,15 +333,10 @@ fun SettingPage(activity: MainActivity, onOpenTheme: () -> Unit = {}) {
                         context.openUrl("https://github.com/luckyzyx/LuckyTool-Localization")
                     },
                 )
+                }
             }
         }
-        if (uiMode == UiMode.Miuix) {
-            CompositionLocalProvider(LocalScopeTopInset provides padding.calculateTopPadding()) {
-                scopeContent()
-            }
-        } else {
-            scopeContent()
-        }
+        scopeContent()
     }
 
     if (showDonateList) {
@@ -373,57 +378,15 @@ fun SettingPage(activity: MainActivity, onOpenTheme: () -> Unit = {}) {
     }
 
     if (showClearDialog) {
-        when (LocalUiMode.current) {
-            UiMode.Miuix -> OverlayDialog(
-                show = true,
-                onDismissRequest = { showClearDialog = false },
-            ) {
-                MiuixText(
-                    text = stringResource(R.string.clear_all_data_message),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(modifier = Modifier.padding(top = 12.dp)) {
-                    MiuixTextButton(
-                        text = stringResource(android.R.string.cancel),
-                        onClick = { showClearDialog = false },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(20.dp))
-                    MiuixTextButton(
-                        text = stringResource(android.R.string.ok),
-                        onClick = {
-                            showClearDialog = false
-                            context.clearAllPrefs(
-                                ModulePrefs,
-                                IntentPrefs,
-                                SettingsPrefs,
-                                OtherPrefs
-                            )
-                            exitProcess(0)
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
-            }
-
-            UiMode.Material -> AlertDialog(
-                onDismissRequest = { showClearDialog = false },
-                text = { Text(stringResource(R.string.clear_all_data_message)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showClearDialog = false
-                        context.clearAllPrefs(ModulePrefs, IntentPrefs, SettingsPrefs, OtherPrefs)
-                        exitProcess(0)
-                    }) { Text(stringResource(android.R.string.ok)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showClearDialog = false }) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                },
-            )
-        }
+        ConfirmDialog(
+            message = stringResource(R.string.clear_all_data_message),
+            onConfirm = {
+                showClearDialog = false
+                context.clearAllPrefs(ModulePrefs, IntentPrefs, SettingsPrefs, OtherPrefs)
+                exitProcess(0)
+            },
+            onDismiss = { showClearDialog = false },
+        )
     }
 
     if (showFeedbackDialog) {
@@ -476,47 +439,15 @@ fun SettingPage(activity: MainActivity, onOpenTheme: () -> Unit = {}) {
             stringResource(R.string.data_prefs_targets_title) + "\n" + statusLines.joinToString("\n"),
             stringResource(R.string.data_backup_status_tips),
         ).joinToString("\n\n")
-        when (LocalUiMode.current) {
-            UiMode.Miuix -> OverlayDialog(
-                show = true,
-                onDismissRequest = { showBackupDialog = false },
-            ) {
-                MiuixText(text = message, modifier = Modifier.fillMaxWidth())
-                Row(modifier = Modifier.padding(top = 12.dp)) {
-                    MiuixTextButton(
-                        text = stringResource(android.R.string.cancel),
-                        onClick = { showBackupDialog = false },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(20.dp))
-                    MiuixTextButton(
-                        text = stringResource(R.string.backup_data),
-                        onClick = {
-                            showBackupDialog = false
-                            startBackup()
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
-            }
-
-            UiMode.Material -> AlertDialog(
-                onDismissRequest = { showBackupDialog = false },
-                text = { Text(message) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showBackupDialog = false
-                        startBackup()
-                    }) { Text(stringResource(R.string.backup_data)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showBackupDialog = false }) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                },
-            )
-        }
+        ConfirmDialog(
+            message = message,
+            onConfirm = {
+                showBackupDialog = false
+                startBackup()
+            },
+            onDismiss = { showBackupDialog = false },
+            confirmLabel = stringResource(R.string.backup_data),
+        )
     }
 
     pendingRestoreJson?.let { json ->
@@ -559,52 +490,18 @@ fun SettingPage(activity: MainActivity, onOpenTheme: () -> Unit = {}) {
             add(targetsSummary)
             if (remoteUnwritable) add(stringResource(R.string.data_remote_unavailable_tips))
         }.joinToString("\n\n")
-        when (LocalUiMode.current) {
-            UiMode.Miuix -> OverlayDialog(
-                show = true,
-                onDismissRequest = { pendingRestoreJson = null },
-            ) {
-                MiuixText(
-                    text = restoreMessage,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(modifier = Modifier.padding(top = 12.dp)) {
-                    MiuixTextButton(
-                        text = stringResource(android.R.string.cancel),
-                        onClick = { pendingRestoreJson = null },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(20.dp))
-                    MiuixTextButton(
-                        text = stringResource(R.string.restore_data),
-                        onClick = {
-                            pendingRestoreJson = null
-                            writeRestoreData(activity, json)
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
-            }
-
-            UiMode.Material -> AlertDialog(
-                onDismissRequest = { pendingRestoreJson = null },
-                text = { Text(restoreMessage) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        pendingRestoreJson = null
-                        writeRestoreData(activity, json)
-                    }) { Text(stringResource(R.string.restore_data)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { pendingRestoreJson = null }) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                },
-            )
-        }
+        ConfirmDialog(
+            message = restoreMessage,
+            onConfirm = {
+                pendingRestoreJson = null
+                writeRestoreData(activity, json)
+            },
+            onDismiss = { pendingRestoreJson = null },
+            confirmLabel = stringResource(R.string.restore_data),
+        )
     }
 }
+
 
 /**
  * Download/LuckyTool 在「外部存储」文档 provider 里的 document uri。

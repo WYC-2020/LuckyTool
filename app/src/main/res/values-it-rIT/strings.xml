@@ -6,7 +6,7 @@
     <string name="nav_function">Funzione</string>
     <string name="nav_home">Home</string>
     <string name="nav_other">Altro</string>
-    <string name="nav_log">Registri</string>
+    <string name="nav_search">Cerca</string>
     <string name="nav_setting">Impostazioni</string>
     <string name="fragment_source">Codice Sorgente</string>
     <!-- Settings -->
@@ -75,7 +75,7 @@
     <string name="participate_translation_summary">Vai su Github per contribuire alla traduzione</string>
     <!-- check lsposed -->
     <string name="system_not_support">Il sistema attuale non è supportato!</string>
-    <string name="unsupported_xposed">Rilevato modulo non attivato.\nUtilizzare il framework LSPosed per l\'attivazione dopo l\'attivazione!</string>
+    <string name="unsupported_xposed">Utilizzare il framework LSPosed per attivare il modulo e riprovare!</string>
     <string name="unsupported_os">Sistema non supportato</string>
     <string name="unsupported_os_summary">Dato che il modulo supporta solo i sistemi ColorOS 12 e superiori, assicurati di prendere misure di sicurezza!</string>
     <string name="no_root">Nessun permesso di root</string>
@@ -99,6 +99,8 @@
     <string name="restart_only_this_page_scope">Riavvia solo questa pagina</string>
     <string name="reboot">Riavvia il sistema</string>
     <string name="fast_reboot">Riavvio veloce</string>
+    <string name="reboot_message">Riavviare il sistema?\nIl dispositivo si riavvia subito e i dati non salvati vanno persi.</string>
+    <string name="fast_reboot_message">Riavvio rapido?\nTutte le app vengono chiuse e il sistema si riavvia senza spegnersi.</string>
     <string name="menu_versioninfo">Informazioni sulla versione</string>
     <string name="scope_version_info">Informazioni Versione</string>
     <string name="show_system_app">Mostra App di Sistema</string>
@@ -112,6 +114,8 @@
     <string name="replace_system_root_state_detection">Sostituisci il rilevamento dello stato del root del sistema</string>
     <string name="allow_untrusted_touch">Consenti tocco non attendibile</string>
     <string name="allow_untrusted_touch_summary">Risolvi il problema che alcune finestre o pagine sono bloccate e non possono essere toccate</string>
+    <string name="usb_debugging_auto_authorize">Autorizzazione automatica del debug USB</string>
+    <string name="usb_debugging_auto_authorize_summary">Abilita il debug USB nelle opzioni sviluppatore</string>
     <string name="customized_gaussian_blur_effect_level">Livello effetto sfocatura personalizzato</string>
     <string name="disable_temperature_control_listener">Disabilita il listener del controllo della temperatura</string>
     <string name="set_ltpo_refresh_rate_mode">Imposta la modalità di aggiornamento LTPO</string>
@@ -558,8 +562,6 @@
     <string name="SoundRelated">Audio</string>
     <string name="media_volume_level">Livello volume multimediale</string>
     <string name="media_volume_level_summary">Impostare su 0 per disabilitare questa funzione, riavviare il sistema per renderla effettiva</string>
-    <string name="enable_super_volume_mode">Abilita la modalità super volume</string>
-    <string name="enable_super_volume_mode_for_calls">Abilita la modalità super volume per le chiamate</string>
     <string name="minimum_volume_level_can_be_zero">Il livello di volume minimo può essere zero</string>
     <string name="enable_app_specific_media_volume">Abilita volume multimediale specifico per app</string>
     <string name="enable_app_specific_media_volume_summary">Questa funzione richiede il supporto di sistema per avere effetto</string>
@@ -765,10 +767,6 @@
     <string name="Screenshot">Cattura Schermo</string>
     <string name="remove_system_screenshot_delay">Rimuovi ritardo Screenshot</string>
     <string name="remove_system_screenshot_delay_summary">Sul primo Screenshot potrebbe non avere effetto</string>
-    <string name="remove_screenshot_privacy_limit">Rimuovi limite privacy Screenshot</string>
-    <string name="remove_screenshot_privacy_limit_summary">Rimuovi le restrizioni sulla privacy che non possono essere intercettate. Disabilita FLAG_SECURE se questo non ha effetto</string>
-    <string name="disable_flag_secure">Disabilita FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">Risolvere la maggior parte delle APP non può catturare, condividere o registrare i limiti\nRichiede LSPosed 1.8.6+</string>
     <string name="remove_page_limit_for_long_screenshots">Rimuovi il limite di pagina per Screenshot lunghi</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Solo alcuni scenari sono supportati, si prega di verificare la situazione specifica da soli</string>
     <string name="enable_png_save_format">Abilita formato di salvataggio PNG</string>

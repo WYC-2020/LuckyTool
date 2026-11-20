@@ -6,7 +6,7 @@
     <string name="nav_function">Funcție</string>
     <string name="nav_home">Pagina principală</string>
     <string name="nav_other">Alte</string>
-    <string name="nav_log">Log-uri</string>
+    <string name="nav_search">Căutare</string>
     <string name="nav_setting">Setări</string>
     <string name="fragment_source">Cod sursă</string>
     <!-- Settings -->
@@ -75,7 +75,7 @@
     <string name="participate_translation_summary">Du-te la Github pentru a contribui cu traducerea</string>
     <!-- check lsposed -->
     <string name="system_not_support">Sistemul actual nu acceptă!</string>
-    <string name="unsupported_xposed">Module not activated detected.\nPlease use the LSPosed framework for activation after activation!</string>
+    <string name="unsupported_xposed">Vă rugăm să activați modulul în LSPosed și să încercați din nou!</string>
     <string name="unsupported_os">Sistem neacceptat</string>
     <string name="unsupported_os_summary">Deoarece modulul acceptă doar sistemele ColorOS 12 sau mai sus, asigurați-vă că luați măsuri de securitate!</string>
     <string name="no_root">Fără permisiune root</string>
@@ -99,6 +99,8 @@
     <string name="restart_only_this_page_scope">Repornește doar procesele modificate pe această pagină</string>
     <string name="reboot">Repornește sistemul</string>
     <string name="fast_reboot">Repornire rapidă</string>
+    <string name="reboot_message">Repornești sistemul?\nDispozitivul se repornește imediat, iar modificările nesalvate se pierd.</string>
+    <string name="fast_reboot_message">Repornire rapidă?\nToate aplicațiile se închid, iar sistemul repornește fără oprirea dispozitivului.</string>
     <string name="menu_versioninfo">Informații versiune</string>
     <string name="scope_version_info">Informații versiune Scop</string>
     <string name="show_system_app">Arată aplicațiile de sistem</string>
@@ -112,6 +114,8 @@
     <string name="replace_system_root_state_detection">Înlocuiți detectarea stării de root a sistemului</string>
     <string name="allow_untrusted_touch">Permite atingeri nesigure</string>
     <string name="allow_untrusted_touch_summary">Rezolvă problema că unele ferestre sau pagini sunt blocate și nu pot fi atinse</string>
+    <string name="usb_debugging_auto_authorize">Autorizare automată a depanării USB</string>
+    <string name="usb_debugging_auto_authorize_summary">Activați depanarea USB în opțiunile pentru dezvoltatori</string>
     <string name="customized_gaussian_blur_effect_level">Efect de blur gaussian personalizat</string>
     <string name="disable_temperature_control_listener">Dezactivează ascultătorul de control al temperaturii</string>
     <string name="set_ltpo_refresh_rate_mode">Setați modul de reîmprospătare LTPO</string>
@@ -560,8 +564,6 @@
     <string name="SoundRelated">Sound Related</string>
     <string name="media_volume_level">Media volume level</string>
     <string name="media_volume_level_summary">Set to 0 to disable this function, restart the system to take effect</string>
-    <string name="enable_super_volume_mode">Enable super volume mode</string>
-    <string name="enable_super_volume_mode_for_calls">Enable super volume mode for calls</string>
     <string name="minimum_volume_level_can_be_zero">Minimum volume level can be zero</string>
     <string name="enable_app_specific_media_volume">Enable app-specific media volume</string>
     <string name="enable_app_specific_media_volume_summary">This function requires system support to take effect</string>
@@ -767,10 +769,6 @@
     <string name="Screenshot">Screenshot</string>
     <string name="remove_system_screenshot_delay">Remove system screenshot delay</string>
     <string name="remove_system_screenshot_delay_summary">First screenshot may not take effect</string>
-    <string name="remove_screenshot_privacy_limit">Remove screenshot privacy limit</string>
-    <string name="remove_screenshot_privacy_limit_summary">Remove restrictions on privacy which cannot be intercepted. Disable FLAG_SECURE if this does not take effect</string>
-    <string name="disable_flag_secure">Disable FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">Resolve most APPs cannot capture, screen share, or record limits\nRequires LSPosed 1.8.6+</string>
     <string name="remove_page_limit_for_long_screenshots">Remove the page limit for long screenshots</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Only some scenarios are supported, please test the specific situation by yourself</string>
     <string name="enable_png_save_format">Enable PNG save format</string>

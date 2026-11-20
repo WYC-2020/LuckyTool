@@ -6,11 +6,8 @@ import android.os.RemoteException
 import androidx.collection.ArrayMap
 import androidx.collection.arrayMapOf
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -29,6 +26,10 @@ import androidx.compose.ui.unit.dp
 import com.highcapable.betterandroid.ui.extension.view.toast
 import com.highcapable.yukihookapi.YukiHook
 import com.highcapable.yukihookapi.hook.xposed.reload.entity.ModuleReloadStatus
+import com.itos.coui.dialog.CouiDialogAction
+import com.itos.coui.dialog.CouiDialogActionStyle
+import com.itos.coui.dialog.CouiDialogDefaults
+import com.itos.coui.theme.CouiTheme
 import com.luckyzyx.luckytool.IPackageServiceController
 import com.luckyzyx.luckytool.R
 import com.luckyzyx.luckytool.service.ActivityManagerService
@@ -36,6 +37,9 @@ import com.luckyzyx.luckytool.service.PackagesService
 import com.luckyzyx.luckytool.service.PowerService
 import com.luckyzyx.luckytool.ui.compose.components.ActionListDialog
 import com.luckyzyx.luckytool.ui.compose.components.ChoiceItem
+import com.luckyzyx.luckytool.ui.compose.components.ConfirmDialog
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiAlertDialog
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiProgressDialog
 import com.luckyzyx.luckytool.ui.theme.LocalUiMode
 import com.luckyzyx.luckytool.ui.theme.UiMode
 import com.topjohnwu.superuser.Shell
@@ -46,10 +50,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.lsposed.lsparanoid.Obfuscate
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
-import top.yukonga.miuix.kmp.basic.Text as MiuixText
-import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 
 @Obfuscate
 object RestartMenuUtils {
@@ -73,9 +73,13 @@ object RestartMenuUtils {
         var showConfirmScope by remember { mutableStateOf(false) }
         var showConfirmHooker by remember { mutableStateOf(false) }
         var showOptimize by remember { mutableStateOf(false) }
+        var showConfirmReboot by remember { mutableStateOf(false) }
+        var showConfirmFastReboot by remember { mutableStateOf(false) }
         when {
             showConfirmScope -> ConfirmRestartAllScopeDialog(context, onDismiss)
             showConfirmHooker -> ConfirmRestartAllHookerDialog(context, onDismiss)
+            showConfirmReboot -> ConfirmRebootDialog(context, onDismiss)
+            showConfirmFastReboot -> ConfirmFastRebootDialog(onDismiss)
             showOptimize -> OptimizeDexDialog(
                 context,
                 buildScopeMaps(context, context.resources.getStringArray(R.array.xposed_scope)),
@@ -83,7 +87,7 @@ object RestartMenuUtils {
                 onDismiss
             )
 
-            // 点行执行动作、关闭由动作自己决定：前三项只把本层换成另一层对话框，后两项执行完再关
+            // 点行只把本层换成下一层对话框：重启、快速重启不可撤销，执行前都要再确认一次
             else -> ActionListDialog(
                 title = stringResource(R.string.menu_reboot),
                 items = items,
@@ -93,17 +97,8 @@ object RestartMenuUtils {
                         "restart_scope" -> showConfirmScope = true
                         "re_optimize_dex" -> showOptimize = true
                         "reload_hooker" -> showConfirmHooker = true
-                        "reboot" -> {
-                            PowerService.get(context) { controller ->
-                                controller?.reboot(false, null, false)
-                            }
-                            onDismiss()
-                        }
-
-                        else -> {
-                            ShellUtils.fastCmd(CommandUtils.killzygote)
-                            onDismiss()
-                        }
+                        "reboot" -> showConfirmReboot = true
+                        else -> showConfirmFastReboot = true
                     }
                 },
             )
@@ -214,33 +209,58 @@ object RestartMenuUtils {
     @Composable
     private fun ConfirmRestartAllScopeDialog(context: Context, onDismiss: () -> Unit) {
         val xposedScope = remember { context.resources.getStringArray(R.array.xposed_scope) }
-        when (LocalUiMode.current) {
-            UiMode.Miuix -> MiuixMessageDialog(
-                message = stringResource(R.string.restart_scope_message),
-                onConfirm = {
-                    coroutineScope.launch(Dispatchers.Default) {
-                        restartScope(context, xposedScope)
-                    }
-                    onDismiss()
-                },
-                onDismiss = onDismiss,
-            )
-
-            UiMode.Material -> AlertDialog(
-                onDismissRequest = onDismiss,
-                text = { Text(stringResource(R.string.restart_scope_message)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        coroutineScope.launch(Dispatchers.Default) {
-                            restartScope(context, xposedScope)
-                        }
-                        onDismiss()
-                    }) { Text(stringResource(android.R.string.ok)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
-                })
+        val message = stringResource(R.string.restart_scope_message)
+        // 确认动作两条线共用：先触发重启，再关掉弹窗
+        val onConfirm = {
+            coroutineScope.launch(Dispatchers.Default) {
+                restartScope(context, xposedScope)
+            }
+            onDismiss()
         }
+        ConfirmDialog(
+            title = stringResource(R.string.restart_scope),
+            message = message,
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+        )
+    }
+
+    /**
+     * 重启系统二次确认对话框
+     *
+     * 重启不可撤销，确认后才交给 PowerService，随后关掉整层菜单。
+     */
+    @Composable
+    private fun ConfirmRebootDialog(context: Context, onDismiss: () -> Unit) {
+        ConfirmDialog(
+            title = stringResource(R.string.reboot),
+            message = stringResource(R.string.reboot_message),
+            onConfirm = {
+                PowerService.get(context) { controller ->
+                    controller?.reboot(false, null, false)
+                }
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
+    }
+
+    /**
+     * 快速重启二次确认对话框
+     *
+     * 快速重启只重起框架进程，所有应用都会掉线，同样需要先确认。
+     */
+    @Composable
+    private fun ConfirmFastRebootDialog(onDismiss: () -> Unit) {
+        ConfirmDialog(
+            title = stringResource(R.string.fast_reboot),
+            message = stringResource(R.string.fast_reboot_message),
+            onConfirm = {
+                ShellUtils.fastCmd(CommandUtils.killzygote)
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
     }
 
     /**
@@ -249,66 +269,18 @@ object RestartMenuUtils {
     @Composable
     private fun ConfirmRestartAllHookerDialog(context: Context, onDismiss: () -> Unit) {
         val xposedScope = remember { context.resources.getStringArray(R.array.xposed_scope) }
-        when (LocalUiMode.current) {
-            UiMode.Miuix -> MiuixMessageDialog(
-                message = stringResource(R.string.reload_hooker_message),
-                onConfirm = {
-                    restartHooker(context, xposedScope)
-                    onDismiss()
-                },
-                onDismiss = onDismiss,
-            )
-
-            UiMode.Material -> AlertDialog(
-                onDismissRequest = onDismiss,
-                text = { Text(stringResource(R.string.reload_hooker_message)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        restartHooker(context, xposedScope)
-                        onDismiss()
-                    }) { Text(stringResource(android.R.string.ok)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
-                })
-        }
+        val message = stringResource(R.string.reload_hooker_message)
+        ConfirmDialog(
+            title = stringResource(R.string.reload_hooker),
+            message = message,
+            onConfirm = {
+                restartHooker(context, xposedScope)
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
     }
 
-    /**
-     * Miuix 线的“消息 + 确认/取消”对话框。
-     *
-     * 弹层走 `overlay.OverlayDialog`，由根部 Miuix Scaffold 的 popup host 承载
-     * （`renderInRootScaffold` 保持默认 true，不自装 host）。
-     */
-    @Composable
-    private fun MiuixMessageDialog(
-        message: String,
-        onConfirm: () -> Unit,
-        onDismiss: () -> Unit,
-        title: String? = null,
-    ) {
-        OverlayDialog(
-            show = true,
-            title = title,
-            onDismissRequest = onDismiss,
-        ) {
-            MiuixText(text = message, modifier = Modifier.fillMaxWidth())
-            Row(modifier = Modifier.padding(top = 12.dp)) {
-                MiuixTextButton(
-                    text = stringResource(android.R.string.cancel),
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(20.dp))
-                MiuixTextButton(
-                    text = stringResource(android.R.string.ok),
-                    onClick = onConfirm,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
-        }
-    }
 
     /**
      * 重启部分作用域
@@ -419,27 +391,12 @@ object RestartMenuUtils {
         }
         when (stage) {
             OptimizeStage.Confirm -> {
-                when (LocalUiMode.current) {
-                    UiMode.Miuix -> MiuixMessageDialog(
-                        message = stringResource(R.string.re_optimize_dex_message),
-                        onConfirm = { launch(current) },
-                        onDismiss = onDismiss,
-                    )
-
-                    UiMode.Material -> AlertDialog(
-                        onDismissRequest = onDismiss,
-                        text = { Text(stringResource(R.string.re_optimize_dex_message)) },
-                        confirmButton = {
-                            TextButton(onClick = { launch(current) }) {
-                                Text(stringResource(android.R.string.ok))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = onDismiss) {
-                                Text(stringResource(android.R.string.cancel))
-                            }
-                        })
-                }
+                ConfirmDialog(
+                    title = stringResource(R.string.re_optimize_dex),
+                    message = stringResource(R.string.re_optimize_dex_message),
+                    onConfirm = { launch(current) },
+                    onDismiss = onDismiss,
+                )
             }
 
             OptimizeStage.Running -> {
@@ -454,85 +411,117 @@ object RestartMenuUtils {
                         }
                     }
                 }
+                val title = stringResource(R.string.re_optimize_dex_optimizing)
                 when (LocalUiMode.current) {
-                    UiMode.Miuix -> OverlayDialog(
-                        show = true,
-                        title = stringResource(R.string.re_optimize_dex_optimizing),
-                        onDismissRequest = {},
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            CircularProgressIndicator()
-                            MiuixText(
-                                text = progressText,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 12.dp),
-                            )
-                        }
-                    }
-
-                    UiMode.Material -> AlertDialog(
-                        onDismissRequest = {},
-                        title = { Text(stringResource(R.string.re_optimize_dex_optimizing)) },
-                        text = {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                CircularProgressIndicator()
-                                Text(
-                                    text = progressText,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 12.dp),
-                                )
-                            }
-                        },
-                        confirmButton = {})
+                    UiMode.Material -> MaterialOptimizeRunningDialog(title, progressText)
+                    UiMode.Coui -> CouiOptimizeRunningDialog(title, progressText)
                 }
             }
 
             OptimizeStage.Failed -> {
+                val title = stringResource(R.string.re_optimize_dex_failed)
+                val message = stringResource(
+                    R.string.re_optimize_dex_faile_message,
+                    failedApps.values.joinToString("\n")
+                )
                 when (LocalUiMode.current) {
-                    UiMode.Miuix -> MiuixMessageDialog(
-                        title = stringResource(R.string.re_optimize_dex_failed),
-                        message = stringResource(
-                            R.string.re_optimize_dex_faile_message,
-                            failedApps.values.joinToString("\n")
-                        ),
-                        onConfirm = { launch(failedApps) },
+                    UiMode.Material -> MaterialOptimizeFailedDialog(
+                        title = title,
+                        message = message,
+                        onRetry = { launch(failedApps) },
                         onDismiss = onDismiss,
                     )
 
-                    UiMode.Material -> AlertDialog(
-                        onDismissRequest = onDismiss,
-                        title = { Text(stringResource(R.string.re_optimize_dex_failed)) },
-                        text = {
-                            Text(
-                                stringResource(
-                                    R.string.re_optimize_dex_faile_message,
-                                    failedApps.values.joinToString("\n")
-                                )
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = { launch(failedApps) }) {
-                                Text(stringResource(android.R.string.ok))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = onDismiss) {
-                                Text(stringResource(android.R.string.cancel))
-                            }
-                        })
+                    UiMode.Coui -> CouiOptimizeFailedDialog(
+                        title = title,
+                        message = message,
+                        onRetry = { launch(failedApps) },
+                        onDismiss = onDismiss,
+                    )
                 }
             }
         }
+    }
+
+
+    /** Material 线：执行中的进度弹窗，只有居中的进度圈和一行进度文字 */
+    @Composable
+    private fun MaterialOptimizeRunningDialog(title: String, progressText: String) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(title) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = progressText,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                    )
+                }
+            },
+            confirmButton = {})
+    }
+
+    /**
+     * Coui 线：执行中的进度弹窗，标题写明在做什么，进度文案放在标题下面。
+     *
+     * 没有可点动作，返回键与外点都不关闭：优化还在跑，弹层不该消失。
+     * 进度文案把计数写在应用名前，长应用名只会截掉名字，看不出「还剩多少」的计数不会被吃掉。
+     */
+    @Composable
+    private fun CouiOptimizeRunningDialog(title: String, progressText: String) {
+        CouiProgressDialog(title = title, message = progressText)
+    }
+
+    /** Material 线：有失败应用时列出包名，确认后重新执行 */
+    @Composable
+    private fun MaterialOptimizeFailedDialog(
+        title: String,
+        message: String,
+        onRetry: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(title) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = onRetry) { Text(stringResource(android.R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+            })
+    }
+
+    /** Coui 线：失败提示，重新执行是主操作，取消放取消位 */
+    @Composable
+    private fun CouiOptimizeFailedDialog(
+        title: String,
+        message: String,
+        onRetry: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        CouiAlertDialog(
+            onDismissRequest = onDismiss,
+            title = title,
+            message = message,
+            confirmAction = CouiDialogAction(
+                text = stringResource(android.R.string.ok),
+                onClick = onRetry,
+                style = CouiDialogActionStyle.Primary,
+                colors = CouiDialogDefaults.primaryActionColors(CouiTheme.colorScheme.accent),
+            ),
+            dismissAction = CouiDialogAction(
+                text = stringResource(android.R.string.cancel),
+                onClick = onDismiss,
+            ),
+        )
     }
 
     private enum class OptimizeStage { Confirm, Running, Failed }
@@ -568,7 +557,8 @@ object RestartMenuUtils {
             scopes.keys.forEachIndexed { index, pack ->
                 val name = scopes[pack] ?: pack
                 withContext(Dispatchers.Main) {
-                    onProgress("$name (${index + 1}/${scopes.size})")
+                    // 计数放在最前：COUI 加载弹窗的提示是单行、超长省略号，长应用名会把末尾的计数吃掉
+                    onProgress("${index + 1}/${scopes.size} $name")
                 }
                 val success = try {
                     controller?.clearApplicationProfileData(pack)

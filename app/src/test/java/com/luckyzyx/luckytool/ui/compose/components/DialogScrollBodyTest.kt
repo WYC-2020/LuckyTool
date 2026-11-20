@@ -1,4 +1,4 @@
-package com.luckyzyx.luckytool.ui.compose.components.miuix
+package com.luckyzyx.luckytool.ui.compose.components
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
@@ -6,11 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import com.luckyzyx.luckytool.ui.compose.ComposeGestureHost
-import com.luckyzyx.luckytool.ui.theme.LuckyAppTheme
+import com.luckyzyx.luckytool.ui.theme.AppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -19,25 +20,30 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import top.yukonga.miuix.kmp.basic.Text
 
 /**
  * 锁定「正文可滚动 + 底部操作行固定」这条不变量。
  *
- * 回归背景：miuix OverlayDialog 在手机上底对齐且正文不滚动，键盘弹出后可用高度只剩「屏幕 − 键盘」，
- * Column 把固定高度的子项逐项压扁，靠后的按钮行被压成 0 高度（详见 MiuixDialogScrollBody 的注释）。
+ * 弹层容器底对齐且正文不滚动时，键盘弹出后可用高度只剩「屏幕 − 键盘」，
+ * Column 把固定高度的子项逐项压扁，靠后的按钮行被压成 0 高度（见 [DialogScrollBody] 的说明）。
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [32], application = Application::class, qualifiers = "zh-rCN-w411dp-h880dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class MiuixDialogScrollBodyTest {
+class DialogScrollBodyTest {
+
+    private companion object {
+        val SHORT_CONTAINER = 200.dp
+        val TALL_CONTAINER = 400.dp
+        const val ACTION_LABEL = "确定"
+    }
 
     @Test
     fun `actions stay visible when the body overflows a short container`() {
         ComposeGestureHost().use { host ->
             val sizes = MeasuredSizes()
             host.setContent {
-                LuckyAppTheme {
+                AppTheme {
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
@@ -45,7 +51,7 @@ class MiuixDialogScrollBodyTest {
                                 .height(SHORT_CONTAINER)
                                 .onSizeChanged { sizes.container = it.height },
                         ) {
-                            MiuixDialogScrollBody(
+                            DialogScrollBody(
                                 actions = { Text(ACTION_LABEL) },
                             ) {
                                 repeat(40) { index -> Text("正文第 $index 行，用足够的行数把容器撑满") }
@@ -74,9 +80,9 @@ class MiuixDialogScrollBodyTest {
         ComposeGestureHost().use { host ->
             val sizes = MeasuredSizes()
             host.setContent {
-                LuckyAppTheme {
+                AppTheme {
                     Box(Modifier.fillMaxSize()) {
-                        MiuixDialogScrollBody(
+                        DialogScrollBody(
                             modifier = Modifier.onSizeChanged { sizes.body = it.height },
                             actions = { Text(ACTION_LABEL) },
                         ) {
@@ -97,7 +103,7 @@ class MiuixDialogScrollBodyTest {
         ComposeGestureHost().use { host ->
             val sizes = MeasuredSizes()
             host.setContent {
-                LuckyAppTheme {
+                AppTheme {
                     Box(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
@@ -105,7 +111,7 @@ class MiuixDialogScrollBodyTest {
                                 .height(TALL_CONTAINER)
                                 .onSizeChanged { sizes.container = it.height },
                         ) {
-                            MiuixDialogScrollBody(
+                            DialogScrollBody(
                                 scrollable = false,
                                 actions = { Text(ACTION_LABEL) },
                             ) {
@@ -140,11 +146,5 @@ class MiuixDialogScrollBodyTest {
     private class MeasuredSizes {
         var container = 0
         var body = 0
-    }
-
-    private companion object {
-        val SHORT_CONTAINER = 200.dp
-        val TALL_CONTAINER = 400.dp
-        const val ACTION_LABEL = "确定"
     }
 }

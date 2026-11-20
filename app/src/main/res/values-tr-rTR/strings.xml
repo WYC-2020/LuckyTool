@@ -8,7 +8,7 @@
     <string name="nav_function">İşlevler</string>
     <string name="nav_home">Ana Sayfa</string>
     <string name="nav_other">Diğer</string>
-    <string name="nav_log">Günlükler (Log)</string>
+    <string name="nav_search">Ara</string>
     <string name="nav_setting">Ayarlar</string>
     <string name="fragment_source">Kaynak Kod</string>
     <!-- Settings -->
@@ -85,7 +85,7 @@
     
     <!-- check lsposed -->
     <string name="system_not_support">Mevcut sistem desteklenmiyor!</string>
-    <string name="unsupported_xposed">Modülün etkinleştirilmediği tespit edildi.\nLütfen etkinleştirme için LSPosed altyapısını kullanın!</string>
+    <string name="unsupported_xposed">Lütfen modülü LSPosed altyapısında etkinleştirip tekrar deneyin!</string>
     <string name="unsupported_os">Desteklenmeyen sistem</string>
     <string name="unsupported_os_summary">Bu modül yalnızca ColorOS 12 ve üzeri sistemleri desteklediğinden, lütfen gerekli güvenlik önlemlerini aldığınızdan emin olun!</string>
     <string name="no_root">Root izni yok</string>
@@ -110,6 +110,8 @@
     <string name="restart_only_this_page_scope">Yalnızca bu sayfanın kapsamını yeniden başlat</string>
     <string name="reboot">Sistemi Yeniden Başlat</string>
     <string name="fast_reboot">Hızlı yeniden başlat (Fast Reboot)</string>
+    <string name="reboot_message">Sistem yeniden başlatılsın mı?\nCihaz hemen yeniden başlar ve kaydedilmemiş veriler kaybolur.</string>
+    <string name="fast_reboot_message">Hızlı yeniden başlatma?\nTüm uygulamalar kapanır ve sistem cihazı kapatmadan yeniden başlar.</string>
     <string name="menu_versioninfo">Sürüm Bilgisi</string>
     <string name="scope_version_info">Kapsam sürüm bilgisi</string>
     <string name="show_system_app">Sistem uygulamalarını (APP) göster</string>
@@ -127,6 +129,8 @@
     <string name="replace_system_root_state_detection">Sistem Root durumu algılamasını değiştir</string>
     <string name="allow_untrusted_touch">Güvenilmeyen dokunmalara izin ver</string>
     <string name="allow_untrusted_touch_summary">Bazı pencerelerin veya sayfaların engellenerek dokunulamaz hale gelmesi sorununu çözer</string>
+    <string name="usb_debugging_auto_authorize">USB hata ayıklama otomatik yetkilendirme</string>
+    <string name="usb_debugging_auto_authorize_summary">Geliştirici seçeneklerinde USB hata ayıklamayı etkinleştirin</string>
     <string name="customized_gaussian_blur_effect_level">Özelleştirilmiş gauss bulanıklığı efekt seviyesi</string>
     <string name="disable_temperature_control_listener">Sıcaklık kontrolü dinleyicisini devre dışı bırak</string>
     <string name="set_ltpo_refresh_rate_mode">LTPO yenileme hızı modunu ayarla</string>
@@ -655,8 +659,6 @@
     <string name="SoundRelated">Ses İle İlgili</string>
     <string name="media_volume_level">Medya ses düzeyi (oran kademesi)</string>
     <string name="media_volume_level_summary">Bu işlevi devre dışı bırakmak için 0\'a ayarlayın, geçerli olması için cihazı yeniden başlatın</string>
-    <string name="enable_super_volume_mode">Süper ses modunu etkinleştir</string>
-    <string name="enable_super_volume_mode_for_calls">Aramalar için süper ses modunu etkinleştir</string>
     <string name="minimum_volume_level_can_be_zero">Minimum ses seviyesi sıfır olabilir</string>
     <string name="enable_app_specific_media_volume">Uygulamaya özel medya sesini etkinleştir</string>
     <string name="enable_app_specific_media_volume_summary">Bu işlevin geçerli olması için sistemde desteklenmesi gerekir</string>
@@ -902,10 +904,6 @@
     <string name="Screenshot">Ekran Görüntüsü</string>
     <string name="remove_system_screenshot_delay">Sistem ekran görüntüsü gecikmesini kaldır</string>
     <string name="remove_system_screenshot_delay_summary">İlk ekran görüntüsünde etki etmeyebilir</string>
-    <string name="remove_screenshot_privacy_limit">Ekran görüntüsü gizlilik limitini kaldır</string>
-    <string name="remove_screenshot_privacy_limit_summary">Ekran görüntüsü alınamayan yerlerdeki (banka uygulamaları vs.) gizlilik kısıtlamalarını kaldırır. Etki etmezse \'FLAG_SECURE Devre Dışı Bırak\' seçeneğini deneyin</string>
-    <string name="disable_flag_secure">FLAG SECURE\'u Devre Dışı Bırak</string>
-    <string name="disable_flag_secure_summary">Çoğu uygulamanın ekranı kaydetme, ekran/görüntü paylaşma sınırlarını çözer\nLSPosed 1.8.6+ gerektirir</string>
     <string name="remove_page_limit_for_long_screenshots">Uzun ekran görüntüleri için sayfa sınırını (20 sayfa sınırı) kaldır</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Yalnızca bazı senaryolarda desteklenir, lütfen özel durumu kendiniz test edin</string>
     <string name="enable_png_save_format">PNG kaydetme biçimini etkinleştir</string>
@@ -1075,7 +1073,7 @@
     <string name="fps_tips">Kendiliğinden başlatma işlevi ekran kilidi açıldıktan 1 saniye sonra tetiklenir</string>
     <string name="restore_default_refresh_rate">Varsayılan ekran yenileme hızına dön</string>
     <string name="module_isactivated">Modül etkinleştirildi (Etkin)</string>
-    <string name="module_notactive">Modül etkinleştirilmedi ! (Pasif)</string>
+    <string name="module_notactive">Modül etkinleştirilmedi</string>
     <string name="module_has_updated">Modül güncellenmiş (Xposed Üzerinden Onay Vermeniz veya Re-boot Etmeniz Gerekebilir).</string>
     <string name="module_is_disabled">Modül devredışı bırakıldı</string>
     <string name="module_version">Modül sürümü:</string>

@@ -18,8 +18,6 @@ import com.luckyzyx.luckytool.hook.hookers.HookClaw
 import com.luckyzyx.luckytool.hook.hookers.HookCloudService
 import com.luckyzyx.luckytool.hook.hookers.HookCorePatch
 import com.luckyzyx.luckytool.hook.hookers.HookDirectUI
-import com.luckyzyx.luckytool.hook.hookers.HookDisableFlagSecure
-import com.luckyzyx.luckytool.hook.hookers.HookDisableFlagSecureApp
 import com.luckyzyx.luckytool.hook.hookers.HookEngineerMode
 import com.luckyzyx.luckytool.hook.hookers.HookExternalStorage
 import com.luckyzyx.luckytool.hook.hookers.HookFileManager
@@ -46,6 +44,7 @@ import com.luckyzyx.luckytool.hook.hookers.HookPermissionController
 import com.luckyzyx.luckytool.hook.hookers.HookPhone
 import com.luckyzyx.luckytool.hook.hookers.HookPhoneManager
 import com.luckyzyx.luckytool.hook.hookers.HookPictorial
+import com.luckyzyx.luckytool.hook.hookers.HookPscanvas
 import com.luckyzyx.luckytool.hook.hookers.HookQuickSearchBox
 import com.luckyzyx.luckytool.hook.hookers.HookSafeCenter
 import com.luckyzyx.luckytool.hook.hookers.HookScreenshot
@@ -138,6 +137,7 @@ import java.io.File
         "com.heytap.mcs",
         "com.oplus.claw",
         "com.oplus.metis",
+        "com.oplus.pscanvas",
         "ru.kslabs.ksweb",
         "com.dv.adm",
         "com.ruet_cse_1503050.ragib.appbackup.pro",
@@ -147,11 +147,9 @@ import java.io.File
 @Obfuscate
 class MainHook : YukiHookXposedModule {
 
-    override fun onInit() {
-        configure {
-            logging {
-                tag = MainHook.TAG
-            }
+    override fun onInit() = configure {
+        logging {
+            tag = MainHook.TAG
         }
     }
 
@@ -175,11 +173,9 @@ class MainHook : YukiHookXposedModule {
         loadSystem(HookAndroid)
         //核心破解
         loadSystem(HookCorePatch)
-        //禁用安全标记（system_server 侧）
-        loadSystem(HookDisableFlagSecure)
 
         //系统界面
-        loadApp("com.android.systemui", HookSystemUI, HookDisableFlagSecureApp)
+        loadApp("com.android.systemui", HookSystemUI)
 
         //经典主题 Clock
         loadApp("com.oplus.keyguard.clock.base", HookKeyguardClock)
@@ -199,9 +195,7 @@ class MainHook : YukiHookXposedModule {
         loadApp("com.oplus.uiengine", HookUIEngine)
 
         //截屏
-        loadApp("com.oplus.screenshot", HookScreenshot, HookDisableFlagSecureApp)
-        //应用平台服务（截图安全标记）
-        loadApp("com.oplus.appplatform", HookDisableFlagSecureApp)
+        loadApp("com.oplus.screenshot", HookScreenshot)
 
         //安全中心
         loadApp("com.oplus.safecenter", HookSafeCenter)
@@ -331,6 +325,9 @@ class MainHook : YukiHookXposedModule {
 
         //流体云
         loadApp("com.oplus.metis", HookMetis)
+
+        //全景工作台
+        loadApp("com.oplus.pscanvas", HookPscanvas)
 
         //其他APP
         loadApp("com.theappninjas.fakegpsjoystick", HookFakeGpsJoyStick)

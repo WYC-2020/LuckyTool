@@ -57,18 +57,6 @@ object SoundRelatedPage {
             default = 0,
             summary = c.getString(R.string.media_volume_level_summary),
         )
-        if (SDK >= A13) {
-            switch(
-                key = "enable_super_volume_mode",
-                title = c.getString(R.string.enable_super_volume_mode),
-            )
-        }
-        if (osCode >= 27) {
-            switch(
-                key = "enable_super_volume_mode_for_calls",
-                title = c.getString(R.string.enable_super_volume_mode_for_calls),
-            )
-        }
         if (SDK >= A12) {
             switch(
                 key = "minimum_volume_level_can_be_zero",

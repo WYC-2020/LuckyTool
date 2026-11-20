@@ -6,7 +6,7 @@
     <string name="nav_function">機能</string>
     <string name="nav_home">ホーム</string>
     <string name="nav_other">その他</string>
-    <string name="nav_log">ログ</string>
+    <string name="nav_search">検索</string>
     <string name="nav_setting">設定</string>
     <string name="fragment_source">ソースコード</string>
     <!-- Settings -->
@@ -75,7 +75,7 @@
     <string name="participate_translation_summary">Githubでアプリの翻訳にご協力ください</string>
     <!-- check lsposed -->
     <string name="system_not_support">現在のシステムではサポートをしていません!</string>
-    <string name="unsupported_xposed">Module not activated detected.\nPlease use the LSPosed framework for activation after activation!</string>
+    <string name="unsupported_xposed">LSPosed でモジュールを有効化してから、もう一度お試しください。</string>
     <string name="unsupported_os">非対応のシステム</string>
     <string name="unsupported_os_summary">モジュールは ColorOS 12 以降しかサポートしていません。古いシステムには脆弱性があるため、しっかりセキュリティ対策してください。</string>
     <string name="no_root">root 権限がありません</string>
@@ -99,6 +99,8 @@
     <string name="restart_only_this_page_scope">このページのスコープのみを再起動する</string>
     <string name="reboot">システムを再起動</string>
     <string name="fast_reboot">高速な再起動</string>
+    <string name="reboot_message">システムを再起動しますか？\n端末はすぐに再起動し、保存していない内容は失われます。</string>
+    <string name="fast_reboot_message">クイック再起動しますか？\nすべてのアプリが終了し、電源を切らずにシステムが再起動します。</string>
     <string name="menu_versioninfo">バージョンの情報</string>
     <string name="scope_version_info">スコープのバージョンの情報</string>
     <string name="show_system_app">システムアプリを表示</string>
@@ -112,6 +114,8 @@
     <string name="replace_system_root_state_detection">システムの root 検出状態を置き換える</string>
     <string name="allow_untrusted_touch">信頼できないタッチ操作を許可</string>
     <string name="allow_untrusted_touch_summary">一部のウィンドウやページがブロックされ、タッチできない問題を解決します</string>
+    <string name="usb_debugging_auto_authorize">USB デバッグ自動承認</string>
+    <string name="usb_debugging_auto_authorize_summary">開発者向けオプションでUSBデバッグを有効にしてください</string>
     <string name="customized_gaussian_blur_effect_level">カスタマイズされたガウスぼかしレベル</string>
     <string name="disable_temperature_control_listener">温度制御リスナーを無効化</string>
     <string name="set_ltpo_refresh_rate_mode">LTPO リフレッシュレートモードを設定</string>
@@ -558,8 +562,6 @@
     <string name="SoundRelated">サウンド関連</string>
     <string name="media_volume_level">メディアのボリュームレベル</string>
     <string name="media_volume_level_summary">0に設定するとこの機能を無効にします。システムの再起動後に有効化されます</string>
-    <string name="enable_super_volume_mode">スーパーボリュームモードを有効化</string>
-    <string name="enable_super_volume_mode_for_calls">通話のスーパーボリュームモードを有効化</string>
     <string name="minimum_volume_level_can_be_zero">最小音量レベルは0に設定できます</string>
     <string name="enable_app_specific_media_volume">アプリ別のメディア音量を有効化</string>
     <string name="enable_app_specific_media_volume_summary">この機能を有効にするにはシステムサポートが必要です</string>
@@ -765,10 +767,6 @@
     <string name="Screenshot">スクリーンショット</string>
     <string name="remove_system_screenshot_delay">システムからスクリーンショットの遅延を削除</string>
     <string name="remove_system_screenshot_delay_summary">最初のスクリーンショットが反映されない場合があります</string>
-    <string name="remove_screenshot_privacy_limit">スクリーンショットのプライバシー制限を削除</string>
-    <string name="remove_screenshot_privacy_limit_summary">傍受できないプライバシーの制限を解除します。効果がない場合は FLAG_SECURE を無効化してください</string>
-    <string name="disable_flag_secure">FLAG_SECUREを無効化</string>
-    <string name="disable_flag_secure_summary">スクリーンショット、画面共有、または画面録画ができないアプリでの問題を大抵解決します\nLSPosed 1.8.6以上が必要です</string>
     <string name="remove_page_limit_for_long_screenshots">ロングスクリーンショットのページ上限を削除</string>
     <string name="remove_page_limit_for_long_screenshots_summary">一部の状況にのみ対応しています。どうなるかは自分でテストしてください</string>
     <string name="enable_png_save_format">PNG 保存形式を有効化</string>

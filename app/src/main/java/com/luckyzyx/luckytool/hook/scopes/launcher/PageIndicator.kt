@@ -17,6 +17,10 @@ import org.lsposed.lsparanoid.Obfuscate
 
 @Obfuscate
 object PageIndicator : YukiBaseHooker() {
+
+    // 指示器上按下后移动超过这个距离才算「滑动」，避免把点击当成拖动
+    private const val TOUCH_SLOP = 24
+
     override fun onHook() {
         val removeDesktop = preferences(ModulePrefs).getBoolean("remove_pagination_component", false)
         val removeFolder =
@@ -51,20 +55,19 @@ object PageIndicator : YukiBaseHooker() {
 
         if (SDK < A13) return
 
-        // C17 起 PageIndicatorTouchHelper 混淆为 pageindicators/p，onActionMove 内联进
-        // 其 a(MotionEvent) 入口；两版共用的滑动切换点是
-        // OplusPageIndicator.getSwitchTargetPage，返回 -1 时新旧版均跳过页面切换，
-        // 且不影响按压反馈动画与统计。
-        //Source OplusPageIndicator getSwitchTargetPage
-        "com.android.launcher.pageindicators.OplusPageIndicator".toClass().resolve().apply {
-            firstMethod {
-                name = "getSwitchTargetPage"
-                parameters(MotionEvent::class)
-            }.hook {
-                if (disableSliding) {
-                    intercept(-1)
-                }
-            }
+        // 滑动指示器切换页面：旧版靠 OplusPageIndicator.getSwitchTargetPage（返回 -1 跳过切换），
+        // 17.x 起该入口被去掉，改成让指示器自己吃掉触摸——它不消费时事件会落到底下的工作区，
+        // 由工作区当成普通滑动翻页；点击打开小布助手走 OplusDragLayer 转发的手势 helper，不受影响
+        val indicator = "com.android.launcher.pageindicators.OplusPageIndicator".toClass().resolve()
+        val switchTargetPage = indicator.firstMethodOrNull {
+            name = "getSwitchTargetPage"
+            parameters(MotionEvent::class)
+        }
+        if (switchTargetPage != null) {
+            switchTargetPage.hook { if (disableSliding) intercept(-1) }
+        } else {
+            indicator.firstMethodOrNull { name = "onTouchEvent"; parameters(MotionEvent::class) }
+                ?.hook { before { if (disableSliding) result = true } }
         }
 
         //Source BigFolderIcon

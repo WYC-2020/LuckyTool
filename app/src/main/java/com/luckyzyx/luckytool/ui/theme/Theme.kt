@@ -102,43 +102,33 @@ data class AppSettings(
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec.SpecVersion = ColorSpec.SpecVersion.SPEC_2025,
     val dynamicColor: Boolean = true,
+    /** COUI 线是否跟随 Material 取色；false 表示使用 COUI 自带预设配色 */
+    val couiDynamicColor: Boolean = false,
 )
 
 /** 主题偏好读取。 */
 object ThemeController {
 
-    /** 界面风格偏好键：ui_mode，取值 "miuix" / "material"。 */
+    /** 界面风格偏好键：ui_mode，取值 "coui" / "material"。 */
     const val KEY_UI_MODE = "ui_mode"
 
-    /** Miuix 外观线的 Monet 开关，默认关闭。 */
-    const val KEY_MIUIX_MONET = "miuix_monet"
+    /** COUI 线专用取色开关：开启后跟随 Material 取色设置，关闭则使用 COUI 预设配色。 */
+    const val KEY_COUI_DYNAMIC_COLOR = "coui_dynamic_color"
 
     fun getUiMode(context: Context): UiMode = UiMode.fromValue(
         context.getString(SettingsPrefs, KEY_UI_MODE, UiMode.DEFAULT_VALUE)
-    )
+    ).coerceAvailable()
 
     /**
      * 读取主题设置。
      *
-     * 在 Miuix 外观线下，
-     * 「启用 Monet」开关会把当前明暗模式在 MONET_* 与普通模式之间双向改写
-     * （Miuix 的取色由 Monet 决定，Material 由 key_color / use_dynamic_color 决定）。
+     * Material 线的取色由 key_color / use_dynamic_color 决定；COUI 线由 coui_dynamic_color
+     * 决定使用 COUI 预设配色还是跟随同一份取色设置，跟随时才把结果翻译成 COUI 语义色。
      */
     fun getAppSettings(context: Context): AppSettings {
-        val uiMode = getUiMode(context)
-        val rawColorMode = ColorMode.fromValue(
+        val colorMode = ColorMode.fromValue(
             context.getString(SettingsPrefs, "dark_theme", "0").toIntOrNull() ?: 0
         )
-        val colorMode = if (uiMode == UiMode.Miuix) {
-            val miuixMonet = context.getBoolean(SettingsPrefs, KEY_MIUIX_MONET, false)
-            when {
-                !miuixMonet && rawColorMode.isMonet -> rawColorMode.toNonMonetMode()
-                miuixMonet && !rawColorMode.isMonet -> rawColorMode.toMonetMode()
-                else -> rawColorMode
-            }
-        } else {
-            rawColorMode
-        }
         val keyColor = context.getInt(SettingsPrefs, "key_color", 0)
         val paletteStyle = PaletteStyle.entries.firstOrNull {
             it.name == context.getString(
@@ -155,18 +145,20 @@ object ThemeController {
             )
         } ?: ColorSpec.SpecVersion.SPEC_2025
         val dynamicColor = context.getBoolean(SettingsPrefs, "use_dynamic_color", true)
+        val couiDynamicColor = context.getBoolean(SettingsPrefs, KEY_COUI_DYNAMIC_COLOR, false)
         return AppSettings(
             colorMode = colorMode,
             keyColor = keyColor,
             paletteStyle = paletteStyle,
             colorSpec = colorSpec,
             dynamicColor = dynamicColor,
+            couiDynamicColor = couiDynamicColor,
         )
     }
 }
 
 /**
- * 主题偏好变更通知：主题页写入偏好后自增 [revision]，让 [LuckyAppTheme] 重新读取主题设置，
+ * 主题偏好变更通知：主题页写入偏好后自增 [revision]，让 [AppTheme] 重新读取主题设置，
  * 从而在页内即时预览配色，不必 recreate Activity 即生效。
  */
 object ThemePrefs {

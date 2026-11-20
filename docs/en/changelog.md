@@ -26,7 +26,8 @@ Entries for versions before `1.3.5_beta` are currently only available in the
 - Custom action key event interception (no-op / ringtone cycle)
 - Manual scope hot reload
 - Expand the update list by default in the software store
-- Miuix UI style (default, switchable back to Material)
+- Navigation now uses NavHost in a single Activity, with page scaffolds that follow the UI style
+- Standalone search tab with recent search history (replaces the Log tab)
 - Cold-start animation
 - Custom status bar icon order
 - Custom status bar network speed refresh interval (0.1-5 s)
@@ -34,6 +35,7 @@ Entries for versions before `1.3.5_beta` are currently only available in the
 - App permission page (notifications / all files access / app list / install apps)
 - MEMC configuration Activity list supports searching and shows activity names
 - Launcher layout backup and restore
+- Feature switch for the launcher layout backup and restore page (off by default; restart the launcher scope after enabling)
 - Allow choosing a third-party APK installer (@蛮吉)
 - Classic Control Center tile rows and columns on ColorOS 17
 - Control Center HDR/SDR ratio tile
@@ -44,9 +46,12 @@ Entries for versions before `1.3.5_beta` are currently only available in the
 - Show the declared OS version range (minOsdkVersion / maxOsdkVersion) in the package information
 - Very dark mode control page (a replacement when the system page renders empty)
 - Remove forced automatic entry into super power saving mode (@RealmeOS)
+- Confirmation dialog before restarting the system and before a fast reboot
+- Add the panorama work station 3-split view (@天伞桜)
 
 #### Optimized
 
+- Full COUI UI style coverage (dialogs, lists and preference rows, sliders, pull-to-refresh, scope pages)
 - Rework the red-one control on the home screen clock widget
 - Redesigned the single-choice, multi-choice and action-list dialogs
 - Redesigned the app picker dialog
@@ -82,6 +87,8 @@ Entries for versions before `1.3.5_beta` are currently only available in the
 - Fixed the virtual display being released before the restore finished, which made the mini window disappear
 - Fixed three broken com.oplus.games hooks V10.43
 - Fixed "Remove startup animation" not removing the game start popup animation V10.43
+- Fixed the app permission page being skipped on a device without root, which went straight to the home page and showed the no-root dialog
+- Fixed "Enable docker background" and "Force docker background blur" doing nothing on C17
 
 #### Adapted
 
@@ -116,8 +123,12 @@ Entries for versions before `1.3.5_beta` are currently only available in the
 #### Changed
 
 - "Auto app archiving" is now disabled by default
+- Split the floating window / split screen features into a separate page
 
 #### Removed
 
 - Removed "Notification Center two-side alignment"
 - Removed the secure payment scope, its restrictions can be turned off in the system secure payment settings
+- Removed the super volume mode and its call variant
+- Removed "Disable FLAG_SECURE" and the never-shown "Remove screenshot privacy limit" item
+- Removed the app recommendation filters on the app market detail and search pages

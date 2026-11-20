@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import androidx.collection.ArrayMap
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Adb
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.core.graphics.drawable.toBitmap
 import com.highcapable.kavaref.extension.classOf
+import com.itos.coui.theme.CouiTheme
 import com.luckyzyx.luckytool.ITileServiceController
 import com.luckyzyx.luckytool.R
 import com.luckyzyx.luckytool.service.AdbService
@@ -43,13 +46,14 @@ import com.luckyzyx.luckytool.ui.compose.components.AdbDebugDialog
 import com.luckyzyx.luckytool.ui.compose.components.AppPickerDialog
 import com.luckyzyx.luckytool.ui.compose.components.ChoiceItem
 import com.luckyzyx.luckytool.ui.compose.components.MultiChoiceDialog
-import com.luckyzyx.luckytool.ui.compose.components.SingleChoiceDialog
 import com.luckyzyx.luckytool.ui.compose.components.LocalScopeTopInset
+import com.luckyzyx.luckytool.ui.compose.components.SingleChoiceDialog
 import com.luckyzyx.luckytool.ui.compose.components.MainPageActivationEffect
 import com.luckyzyx.luckytool.ui.compose.components.OtherTopBarActions
 import com.luckyzyx.luckytool.ui.compose.components.PrefIcon
 import com.luckyzyx.luckytool.ui.compose.components.ScopeScreen
-import com.luckyzyx.luckytool.ui.compose.components.material.MaterialPageScaffold
+import com.luckyzyx.luckytool.ui.compose.components.coui.CouiIconButton
+import com.luckyzyx.luckytool.ui.compose.components.PageScaffold
 import com.luckyzyx.luckytool.ui.theme.LocalUiMode
 import com.luckyzyx.luckytool.ui.theme.UiMode
 import com.luckyzyx.luckytool.utils.A13
@@ -62,10 +66,6 @@ import com.luckyzyx.luckytool.utils.SDK
 import com.luckyzyx.luckytool.utils.SettingsPrefs
 import com.luckyzyx.luckytool.utils.ShortcutUtils
 import com.luckyzyx.luckytool.utils.showToast
-import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
-import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Pin
 
 /**
  * 其他页：磁贴控制器、远程 ADB、快捷方式、触摸采样率、快捷入口与 DEX 优化等工具入口。
@@ -95,29 +95,24 @@ fun OtherPage(activity: MainActivity, isCurrentPage: Boolean = true) {
     }
     MainPageActivationEffect(isCurrentPage, ::loadControllers, ::loadControllers)
 
-    MaterialPageScaffold(
+    PageScaffold(
         title = stringResource(R.string.nav_other),
         actions = {
             OtherTopBarActions(onOptimize = { showOptimizePicker = true })
         },
     ) { padding ->
+        // 顶栏高度经 LocalScopeTopInset 放进列表 contentPadding：视口铺满整屏，
+        // 滚动中的行才能进入顶栏下方；水平/底部内边距仍留在视口外。
         val layoutDirection = LocalLayoutDirection.current
-        val uiMode = LocalUiMode.current
-        // 作用域内容列表自带 LazyColumn（不能再套 ExpressiveList）；Miuix 线只保留 start/end/bottom
-        // 外置 padding（top 归 0，顶栏高度经 LocalScopeTopInset 交给列表做 contentPadding.top）。
-        val scopeModifier = if (uiMode == UiMode.Miuix) {
-            Modifier
-                .fillMaxSize()
-                .padding(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = padding.calculateBottomPadding(),
-                )
-        } else {
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-        }
+        val scopeModifier = Modifier
+            .fillMaxSize()
+            .consumeWindowInsets(padding)
+            .padding(
+                start = padding.calculateStartPadding(layoutDirection),
+                end = padding.calculateEndPadding(layoutDirection),
+                bottom = padding.calculateBottomPadding(),
+            )
+        val topInset = padding.calculateTopPadding()
         val scopeContent: @Composable () -> Unit = {
             // 控制器状态在 @Composable 作用域内先读取（原因见 HomePage.scopeContent 注释）：
             // 否则 AIDL 控制器连上后入口不出现，需要切页才显示
@@ -138,10 +133,11 @@ fun OtherPage(activity: MainActivity, isCurrentPage: Boolean = true) {
                 stringResource(R.string.set_touch_sampling_rate_tile_level_summary)
             val remoteAdbTitle = stringResource(R.string.remote_adb_debug_title)
             val remoteAdbSummary = stringResource(R.string.remote_adb_debug_summary)
-            ScopeScreen(
-                state = settings,
-                modifier = scopeModifier,
-            ) {
+            CompositionLocalProvider(LocalScopeTopInset provides topInset) {
+                ScopeScreen(
+                    state = settings,
+                    modifier = scopeModifier,
+                ) {
                 // 快捷入口、显示与触控、调试各自成组。
                 group()
                 click(
@@ -206,15 +202,10 @@ fun OtherPage(activity: MainActivity, isCurrentPage: Boolean = true) {
                         onClick = { showAdbDialog = true },
                     )
                 }
+                }
             }
         }
-        if (uiMode == UiMode.Miuix) {
-            CompositionLocalProvider(LocalScopeTopInset provides padding.calculateTopPadding()) {
-                scopeContent()
-            }
-        } else {
-            scopeContent()
-        }
+        scopeContent()
     }
 
     if (!isCurrentPage) return
@@ -323,9 +314,6 @@ private fun ShortcutDialog(context: Context, onDismiss: () -> Unit) {
         beans.map { bean -> ChoiceItem(key = bean.key, title = bean.label) }
     }
     val pinContentDescription = stringResource(R.string.pin_shortcut)
-    // 固定的图标两条 UI 线共用同一个图钉，只有按钮外壳按模式区分，
-    // 否则同一行在 Miuix / Material 下会显示成两个不同含义的图标
-    val pinIcon = MiuixIcons.Pin
     // Pin 改为行尾自定义动作：固定被点的那一项，不再用当前勾选反推
     val pinAction: (@Composable (ChoiceItem) -> Unit)? = if (
         shortcutUtils.shortcutManager.isRequestPinShortcutSupported
@@ -336,13 +324,25 @@ private fun ShortcutDialog(context: Context, onDismiss: () -> Unit) {
                     shortcutUtils.requestPinShortcut(bean.toShortcutInfo(context))
                 }
             }
+            // 行尾动作也在多选列表里：COUI 线要用同一套圆形按压反馈，
+            // M3 的 IconButton 在 COUI 下会留下 Material 的方形波纹与默认尺寸。
             when (LocalUiMode.current) {
-                UiMode.Miuix -> MiuixIconButton(onClick = onClick) {
-                    MiuixIcon(imageVector = pinIcon, contentDescription = pinContentDescription)
-                }
-
                 UiMode.Material -> IconButton(onClick = onClick) {
-                    Icon(imageVector = pinIcon, contentDescription = pinContentDescription)
+                    Icon(
+                        imageVector = Icons.Rounded.PushPin,
+                        contentDescription = pinContentDescription,
+                    )
+                }
+                // 描述挂在 CouiIconButton 的点击面上，图标自身不再重复声明，避免读屏播报两次。
+                UiMode.Coui -> CouiIconButton(
+                    onClick = onClick,
+                    contentDescription = pinContentDescription,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PushPin,
+                        contentDescription = null,
+                        tint = CouiTheme.colorScheme.onSurface,
+                    )
                 }
             }
         }

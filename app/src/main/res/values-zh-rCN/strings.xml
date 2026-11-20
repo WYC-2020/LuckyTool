@@ -6,7 +6,7 @@
     <string name="nav_function">功能</string>
     <string name="nav_home">主页</string>
     <string name="nav_other">其他</string>
-    <string name="nav_log">日志</string>
+    <string name="nav_search">搜索</string>
     <string name="nav_setting">设置</string>
     <string name="fragment_source">源代码</string>
     <!-- Settings -->
@@ -14,6 +14,8 @@
     <string name="theme_title_summary">页面将自动刷新</string>
     <string name="use_dynamic_color">动态取色</string>
     <string name="use_dynamic_color_summary">使用动态取色</string>
+    <string name="coui_follow_material_color">跟随 Material 配色</string>
+    <string name="coui_follow_material_color_summary">开启后 COUI 使用上方取色设置；关闭则使用 COUI 自带预设配色</string>
     <string name="dark_theme">深色主题</string>
     <string name="follow_system">跟随系统</string>
     <string name="dark_theme_off">总是关闭</string>
@@ -36,11 +38,9 @@
     <string name="settings_pager_gesture_ios_like">iOS 风格</string>
     <string name="settings_page_scale">界面缩放</string>
     <string name="settings_page_scale_summary">调整全局显示比例</string>
-    <string name="settings_module_description_max_lines">模块描述最大行数</string>
-    <string name="settings_module_description_max_lines_summary">超过此行数的介绍将自动折叠</string>
-    <string name="unit_lines">行</string>
     <string name="settings_ui_mode">界面风格</string>
     <string name="settings_ui_mode_summary">选择应用的界面风格</string>
+    <string name="settings_ui_mode_coui_unavailable">需要 Android 14（API 34）及以上系统。</string>
     <string name="settings_theme">主题设置</string>
     <string name="settings_theme_mode_system">跟随系统</string>
     <string name="settings_theme_mode_light">浅色</string>
@@ -139,7 +139,7 @@
     <string name="participate_translation_summary">前往 Github 贡献您的翻译</string>
     <!-- check lsposed -->
     <string name="system_not_support">当前系统不支持!</string>
-    <string name="unsupported_xposed">检测到模块未激活\n请使用LSPosed框架进行激活后重试!</string>
+    <string name="unsupported_xposed">请使用LSPosed框架进行激活后重试!</string>
     <string name="unsupported_os">不受支持的系统</string>
     <string name="unsupported_os_summary">由于该模块仅支持 ColorOS 12 及以上系统，请务必采取安全措施！</string>
     <string name="no_root">无 Root 权限</string>
@@ -147,6 +147,8 @@
     <!-- Menu -->
     <string name="menu_reboot">重启菜单</string>
     <string name="menu_search">搜索菜单</string>
+    <string name="search_history">最近搜索</string>
+    <string name="search_history_clear">清空搜索历史</string>
     <string name="search_no_results">无匹配结果</string>
     <string name="search_index_loading">正在构建搜索索引…</string>
     <string name="menu_settings">设置菜单</string>
@@ -168,6 +170,8 @@
     <string name="reload_only_this_page_hooker">仅重载此页Hooker</string>
     <string name="reboot">重启系统</string>
     <string name="fast_reboot">快速重启</string>
+    <string name="reboot_message">确定要重启系统？\n设备会立即重启，未保存的内容会丢失。</string>
+    <string name="fast_reboot_message">确定要快速重启？\n所有应用会被关闭，系统在不开机的情况下重新启动。</string>
     <string name="menu_versioninfo">版本信息</string>
     <string name="menu_more">更多</string>
     <string name="action_optimize_apps">优化应用</string>
@@ -184,6 +188,8 @@
     <string name="replace_system_root_state_detection">替换系统Root状态检测</string>
     <string name="allow_untrusted_touch">允许不受信任的触摸</string>
     <string name="allow_untrusted_touch_summary">解决部分窗口或页面被遮挡导致无法触摸问题</string>
+    <string name="usb_debugging_auto_authorize">USB调试自动授权</string>
+    <string name="usb_debugging_auto_authorize_summary">需要在开发者模式开启USB调试</string>
     <string name="customized_gaussian_blur_effect_level">自定义高斯模糊效果级别</string>
     <string name="disable_temperature_control_listener">禁用温度控制监听器</string>
     <string name="set_ltpo_refresh_rate_mode">设置 LTPO 刷新率模式</string>
@@ -559,6 +565,9 @@
     <string name="custom_multi_window_display_upper_limit">自定义多浮窗显示上限</string>
     <string name="zoom_window_support_list_summary">按需启用，否则将出现其他异常问题</string>
     <string name="force_all_apps_support_split_screen">强制所有应用支持分屏</string>
+    <string name="FloatingWindow">浮窗/分屏</string>
+    <string name="PanoramaWorkStation">全景工作台</string>
+    <string name="panorama_work_station">启用全景工作台</string>
     <string name="launcher_drawer_layout_related">抽屉布局相关</string>
     <string name="enable_drawer_layout_double_line_names">启用抽屉布局双行名称</string>
     <string name="enable_drawer_layout_adjustment">启用抽屉布局调整</string>
@@ -689,8 +698,6 @@
     <string name="SoundRelated">声音相关</string>
     <string name="media_volume_level">媒体音量阶数</string>
     <string name="media_volume_level_summary">设置为 0 关闭此功能，重启系统生效</string>
-    <string name="enable_super_volume_mode">启用超级音量模式</string>
-    <string name="enable_super_volume_mode_for_calls">启用通话超级音量模式</string>
     <string name="minimum_volume_level_can_be_zero">音量阶数最低可为 0</string>
     <string name="enable_app_specific_media_volume">启用应用专属媒体音量</string>
     <string name="enable_app_specific_media_volume_summary">此功能需要系统支持才能生效</string>
@@ -903,10 +910,6 @@
     <string name="Screenshot">截屏相关</string>
     <string name="remove_system_screenshot_delay">移除系统截屏延迟</string>
     <string name="remove_system_screenshot_delay_summary">首次截屏可能会不生效</string>
-    <string name="remove_screenshot_privacy_limit">移除截屏隐私限制</string>
-    <string name="remove_screenshot_privacy_limit_summary">移除涉及隐私无法截屏的限制, 若此项不生效可开启“禁用FLAG_SECURE”</string>
-    <string name="disable_flag_secure">禁用FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">解决大部分APP无法截图、屏幕共享或录制的限制\n需要 LSPosed 1.8.6+</string>
     <string name="remove_page_limit_for_long_screenshots">移除长截图页数限制</string>
     <string name="remove_page_limit_for_long_screenshots_summary">仅支持部分场景，具体情况请自行测试</string>
     <string name="enable_png_save_format">启用 PNG 保存格式</string>
@@ -1390,6 +1393,9 @@
     <string name="launcher_backup">桌面布局备份</string>
     <string name="launcher_backup_entry">桌面布局备份与恢复</string>
     <string name="launcher_backup_entry_summary">备份桌面布局，并可随时按快照恢复</string>
+    <string name="launcher_backup_category_switch">功能开关</string>
+    <string name="launcher_backup_enable">桌面布局备份与恢复</string>
+    <string name="launcher_backup_enable_summary">关闭时桌面进程不装载本功能，本页也联系不上它，手动与自动备份都停止；开启后需重启桌面作用域才生效</string>
     <string name="launcher_backup_category_settings">备份设置</string>
     <string name="launcher_backup_category_actions">操作</string>
     <string name="launcher_backup_category_history">快照历史</string>
@@ -1439,7 +1445,7 @@
     <string name="launcher_backup_tag_manual">手动</string>
     <string name="launcher_backup_tag_pre_restore">恢复前</string>
     <string name="settings_floating_bottom_bar_style">悬浮底栏样式</string>
-    <string name="settings_floating_style_miuix">Miuix</string>
+    <string name="settings_floating_style_classic">经典</string>
     <string name="settings_floating_style_ios">iOS 风格（液态玻璃）</string>
     <string name="home_device_details_show">更多设备信息</string>
     <string name="home_device_details_hide">收起详细信息</string>

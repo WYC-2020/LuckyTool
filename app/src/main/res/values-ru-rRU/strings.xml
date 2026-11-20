@@ -6,7 +6,7 @@
     <string name="nav_function">Функции</string>
     <string name="nav_home">Главная</string>
     <string name="nav_other">Прочее</string>
-    <string name="nav_log">Логи</string>
+    <string name="nav_search">Поиск</string>
     <string name="nav_setting">Настройки</string>
     <string name="fragment_source">Исходный код</string>
     <!-- Settings -->
@@ -75,7 +75,7 @@
     <string name="participate_translation_summary">Перейдите на сайт Github, чтобы добавить свой перевод</string>
     <!-- check lsposed -->
     <string name="system_not_support">Текущая система не поддерживается!</string>
-    <string name="unsupported_xposed">Модуль не активирован.\nПожалуйста, используйте фреймворк LSPosed для активации!</string>
+    <string name="unsupported_xposed">Пожалуйста, активируйте модуль в LSPosed и повторите попытку!</string>
     <string name="unsupported_os">Неподдерживаемая система</string>
     <string name="unsupported_os_summary">Поскольку модуль поддерживает только системы ColorOS 12 и выше, обязательно примите меры безопасности!</string>
     <string name="no_root">Нет root-прав</string>
@@ -99,6 +99,8 @@
     <string name="restart_only_this_page_scope">Перезагрузить только эту область</string>
     <string name="reboot">Перезагрузить</string>
     <string name="fast_reboot">Быстрая перезагрузка</string>
+    <string name="reboot_message">Перезагрузить систему?\nУстройство перезагрузится сразу, несохранённые данные будут потеряны.</string>
+    <string name="fast_reboot_message">Быстрая перезагрузка?\nВсе приложения закроются, система перезапустится без выключения.</string>
     <string name="menu_versioninfo">Информация о версии</string>
     <string name="scope_version_info">Информация о версии</string>
     <string name="show_system_app">Показать системные приложения</string>
@@ -112,6 +114,8 @@
     <string name="replace_system_root_state_detection">Заменить определение состояния root системы</string>
     <string name="allow_untrusted_touch">Разрешить нежелательные касания</string>
     <string name="allow_untrusted_touch_summary">Решите проблему, связанную с тем, что некоторые окна или страницы заблокированы и их нельзя коснуться</string>
+    <string name="usb_debugging_auto_authorize">Автоматическая авторизация отладки USB</string>
+    <string name="usb_debugging_auto_authorize_summary">Включите отладку USB в параметрах разработчика</string>
     <string name="customized_gaussian_blur_effect_level">Настраиваемый уровень эффекта размытия гауса</string>
     <string name="disable_temperature_control_listener">Отключить обработчик контроля температуры</string>
     <string name="set_ltpo_refresh_rate_mode">Установить режим частоты обновления LTPO</string>
@@ -560,8 +564,6 @@
     <string name="SoundRelated">Звук</string>
     <string name="media_volume_level">Уровень громкости мультимедиа</string>
     <string name="media_volume_level_summary">Установите 0, чтобы отключить эту функцию, перезагрузите систему, чтобы изменения вступили в силу</string>
-    <string name="enable_super_volume_mode">Включить режим супер громкости</string>
-    <string name="enable_super_volume_mode_for_calls">Включить режим супер громкости для звонков</string>
     <string name="minimum_volume_level_can_be_zero">Минимальный уровень громкости может быть нулевым</string>
     <string name="enable_app_specific_media_volume">Включить громкость мультимедиа для конкретных приложений</string>
     <string name="enable_app_specific_media_volume_summary">Эта функция требует системной поддержки</string>
@@ -767,10 +769,6 @@
     <string name="Screenshot">Скриншот экрана</string>
     <string name="remove_system_screenshot_delay">Убрать задержку скриншота системы</string>
     <string name="remove_system_screenshot_delay_summary">Первый скриншот может не работать</string>
-    <string name="remove_screenshot_privacy_limit">Удалить ограничения конфиденциальности скриншотов</string>
-    <string name="remove_screenshot_privacy_limit_summary">Снимает ограничения на конфиденциальность, которые не могут быть перехвачены. Отключите FLAG_SECURE, если это никак не повлияет</string>
-    <string name="disable_flag_secure">Отключить FLAG_SECURE</string>
-    <string name="disable_flag_secure_summary">Большинство приложений не могут снимать, делиться скриншотом или ограничивают запись\nТребуется LSPosed 1.8.6+</string>
     <string name="remove_page_limit_for_long_screenshots">Удалить ограничение на количество страниц для длинных скриншотов</string>
     <string name="remove_page_limit_for_long_screenshots_summary">Поддерживаются только некоторые сценарии, пожалуйста, проверьте конкретную ситуацию самостоятельно</string>
     <string name="enable_png_save_format">Включить формат сохранения PNG</string>
